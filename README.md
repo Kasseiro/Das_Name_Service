@@ -2,7 +2,7 @@
 
 Team E. Local DNS resolver with Pi-hole style blocking, built with
 spec-driven development using GitHub Spec Kit. The vibe-coded build of the same
-system lives in `dns-vibe`. The black-box test suite in `tests/` is run against
+system lives in `Vibe_Name_Service`. The black-box test suite in `tests/` is run against
 both builds.
 
 | Person | Role | Modules |
@@ -13,7 +13,7 @@ both builds.
 
 ## Ground rules
 
-- Spec work starts **Wed 14 Oct**, after `vibe-final` is tagged in `dns-vibe`.
+- Spec work starts **Wed 14 Oct**, after `vibe-final` is tagged in `Vibe_Name_Service`.
   The test suite can be written from Sat 10 Oct, from `contract.md` and the RFCs only.
 - Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
 - Every `/speckit.*` call and every implementation prompt whose output gets
@@ -43,7 +43,7 @@ Spec Kit creates a feature branch per spec. Keep them; they are evidence for sec
 ## Layout
 
 ```
-contract.md         external behaviour (shared with dns-vibe, frozen from 9 Oct)
+contract.md         external behaviour (shared with Vibe_Name_Service, frozen from 9 Oct)
 .specify/, specs/   created by Spec Kit
 tests/              black-box suite (pytest + dnspython), run against both builds
 docs/prompt-log.md  prompts, IDs S-001, S-002, ...
