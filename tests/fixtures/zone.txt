@@ -1,0 +1,5 @@
+; Test fixture zone. Both builds load this in tests.
+nas.home.lan.     300 IN A     192.168.1.10
+nas.home.lan.     300 IN AAAA  fd00::10
+files.home.lan.   300 IN CNAME nas.home.lan.
+printer.home.lan. 300 IN A     192.168.1.20
