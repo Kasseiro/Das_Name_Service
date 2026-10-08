@@ -13,12 +13,11 @@ both builds.
 
 ## Ground rules
 
-- Spec work starts **Wed 14 Oct**, after `vibe-final` is tagged in `Vibe_Name_Service`.
-  The test suite can be written from Sat 10 Oct, from `contract.md` and the RFCs only.
+- Spec work starts only after `vibe-final` is tagged in `Vibe_Name_Service`.
+  The test suite can be written before that, from `contract.md` and the RFCs only.
 - Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
 - Every `/speckit.*` call and every implementation prompt whose output gets
   committed goes in `docs/prompt-log.md`.
-- Log hours in `docs/hours.csv` at the end of each session.
 
 Note for threats to validity (report 5.1): this build had the test suite available
 during development; the vibe build did not.
@@ -43,11 +42,10 @@ Spec Kit creates a feature branch per spec. Keep them; they are evidence for sec
 ## Layout
 
 ```
-contract.md         external behaviour (shared with Vibe_Name_Service, frozen from 9 Oct)
+contract.md         external behaviour (shared with Vibe_Name_Service, frozen)
 .specify/, specs/   created by Spec Kit
 tests/              black-box suite (pytest + dnspython), run against both builds
 docs/prompt-log.md  prompts, IDs S-001, S-002, ...
-docs/hours.csv      time spent per person / module
 docs/audit-log.md   flaws found in review, IDs SA-001, ...
 ```
 
