@@ -3,3 +3,49 @@ nas.home.lan.     300 IN A     192.168.1.10
 nas.home.lan.     300 IN AAAA  fd00::10
 files.home.lan.   300 IN CNAME nas.home.lan.
 printer.home.lan. 300 IN A     192.168.1.20
+
+; Tab-separated fields and a TTL of its own.
+tabs.home.lan.	60	IN	A	192.168.1.30
+; CNAME whose target is not in the local zone.
+ext.home.lan.     300 IN CNAME www.example.org.
+; Enough records for one name to push the response past 512 bytes (truncation tests).
+big.home.lan.     300 IN A     192.168.2.1
+big.home.lan.     300 IN A     192.168.2.2
+big.home.lan.     300 IN A     192.168.2.3
+big.home.lan.     300 IN A     192.168.2.4
+big.home.lan.     300 IN A     192.168.2.5
+big.home.lan.     300 IN A     192.168.2.6
+big.home.lan.     300 IN A     192.168.2.7
+big.home.lan.     300 IN A     192.168.2.8
+big.home.lan.     300 IN A     192.168.2.9
+big.home.lan.     300 IN A     192.168.2.10
+big.home.lan.     300 IN A     192.168.2.11
+big.home.lan.     300 IN A     192.168.2.12
+big.home.lan.     300 IN A     192.168.2.13
+big.home.lan.     300 IN A     192.168.2.14
+big.home.lan.     300 IN A     192.168.2.15
+big.home.lan.     300 IN A     192.168.2.16
+big.home.lan.     300 IN A     192.168.2.17
+big.home.lan.     300 IN A     192.168.2.18
+big.home.lan.     300 IN A     192.168.2.19
+big.home.lan.     300 IN A     192.168.2.20
+big.home.lan.     300 IN A     192.168.2.21
+big.home.lan.     300 IN A     192.168.2.22
+big.home.lan.     300 IN A     192.168.2.23
+big.home.lan.     300 IN A     192.168.2.24
+big.home.lan.     300 IN A     192.168.2.25
+big.home.lan.     300 IN A     192.168.2.26
+big.home.lan.     300 IN A     192.168.2.27
+big.home.lan.     300 IN A     192.168.2.28
+big.home.lan.     300 IN A     192.168.2.29
+big.home.lan.     300 IN A     192.168.2.30
+big.home.lan.     300 IN A     192.168.2.31
+big.home.lan.     300 IN A     192.168.2.32
+big.home.lan.     300 IN A     192.168.2.33
+big.home.lan.     300 IN A     192.168.2.34
+big.home.lan.     300 IN A     192.168.2.35
+big.home.lan.     300 IN A     192.168.2.36
+big.home.lan.     300 IN A     192.168.2.37
+big.home.lan.     300 IN A     192.168.2.38
+big.home.lan.     300 IN A     192.168.2.39
+big.home.lan.     300 IN A     192.168.2.40

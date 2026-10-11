@@ -1,3 +1,8 @@
 # Test fixture blocklist
 ads.example.com
 tracker.test
+# commented.example.org
+
+   # indented-comment.example.org
+UPPER.Example.NET
+dotted.example.net.
