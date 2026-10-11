@@ -8,8 +8,8 @@ both builds.
 | Person | Role | Modules |
 |---|---|---|
 | Johnny Löfman | Protocol Core Developer, Lead Spec Writer | wire parser, UDP/TCP listener |
-| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache |
-| Adam Beijar | Admin API Developer, Testing & Verification Lead | blocklist, query log, admin API, test suite |
+| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache, test suite |
+| Adam Beijar | Admin API Developer, Testing & Verification Lead | blocklist, query log, admin API |
 
 ## Ground rules
 
@@ -64,9 +64,11 @@ Spec: specs/003-cache/spec.md
 ## Running the tests
 
 ```
-cd tests
-pip install -r requirements.txt
-pytest --dns 127.0.0.1:5353 --admin http://127.0.0.1:8080
+pip install -r tests/requirements.txt
+pytest tests --impl .                       # this build
+pytest tests --impl ../Vibe_Name_Service    # the other build
 ```
 
-Start either build first with the flags in `contract.md`.
+The suite starts the build itself (`python -m dnsd` in the `--impl` directory, on
+free ports, against a fake upstream) and stops it after each test. Keep `tests`
+before `--impl` on the command line, or write `--impl=<path>`.
