@@ -65,7 +65,7 @@ def test_get_returns_200_json(admin, path):
     response.json()
 
 
-@pytest.mark.parametrize("path", ["/", "/nope", "/stats/extra", "/blocklists"])
+@pytest.mark.parametrize("path", ["/", "/nope", "/stats/extra", "/blocklists", "/ui/extra"])
 def test_unknown_path_is_404(admin, path):
     """contract.md, Admin API, Status codes: an unknown path returns 404"""
     assert requests.get(f"{admin}{path}", timeout=TIMEOUT).status_code == 404
@@ -457,3 +457,18 @@ def test_log_ignores_uncounted_input(server, admin):
     server.udp("after.ads.example.com.", "A")
     names = settled(lambda: log_names(admin, 2))
     assert names == ["after.ads.example.com", "before.ads.example.com"]
+
+
+# --- /ui
+
+def test_get_ui_returns_200_html(admin):
+    """contract.md, Admin API, /ui: GET /ui returns 200 with Content-Type text/html"""
+    response = requests.get(f"{admin}/ui", timeout=TIMEOUT)
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type", "").split(";")[0].strip().lower() == "text/html"
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_ui_method_not_in_table_is_405(admin, method):
+    """contract.md, Admin API, /ui: other methods return 405, like every other known path"""
+    assert requests.request(method, f"{admin}/ui", timeout=TIMEOUT).status_code == 405
