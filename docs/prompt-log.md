@@ -551,3 +551,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-026
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-tasks
+  ```
+- **Why this prompt:** break the 002 plan into ordered, reviewable tasks.
+- **Expected:** tasks.md touching only zone.py, blocklist.py, forwarder.py and __main__.py; no test tasks.
+- **Got:** 31 tasks (T001–T031) in 10 phases, one per user story plus setup, foundational and polish. Ordered US4 (blocklist) before US5 (forwarding), because the forwarder tests need the harness's readiness probe to be blocked. A temporary SERVFAIL branch in the handler (T005) lets the server start early; T015/T020 replace it and T031 checks none is left. Flags three tests that pass early by accident (SERVFAIL already satisfies "not blocked"). Manual checks for startup errors (T028) and unreachable upstream; T030 defines which full-suite failures are acceptable (only 003/004-deferred, never "dnsd exited"/"no response"). It corrected its own task cross-references and parallel markers in a second pass.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
