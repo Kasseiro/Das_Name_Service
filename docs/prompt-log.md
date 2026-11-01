@@ -403,3 +403,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-019
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-018
+- **Prompt:**
+  ```
+  Continue with Phase 8.
+  ```
+- **Why this prompt:** next checkpoint: concurrency (US5, design goals DG-1/DG-2), checked by hand since no official test exists yet.
+- **Expected:** T037 review, T038 manual check with a temporary slow stub, reverted.
+- **Got:** T037 review found no violations, no code change. T038 with a temporary 1.5 s stub: 9/9 checks; a fast query was answered in 0.002 s (UDP) and 0.001 s (TCP) while the slow one was in progress (SC-004: 0.5 s); idle and half-prefix TCP connections closed after 5 s without slowing other clients. Revert verified byte-identical, no TEMP lines. Found that port 5353 is held by the system mDNS daemon: dnsd now refuses to start there, confirming the S-015 decision (with SO_REUSEADDR it would have shared the port silently). Noted a minor TCP write-timeout edge case near the 5 s deadline.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-020 (write timeout, quickstart port)
+- **Commit:**
