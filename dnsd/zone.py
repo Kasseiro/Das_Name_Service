@@ -40,7 +40,15 @@ class ZoneStore:
             matches = tuple(record for record in records if record.rtype == qtype)
             if matches:
                 return Answer(matches)
-            return NotLocal()
+            if records:
+                return NoData()
+            candidate = name
+            while True:
+                if candidate in self._suffixes:
+                    return NXDomain()
+                if not candidate.labels:
+                    return NotLocal()
+                candidate = candidate.parent()
 
     def records(self) -> list[ResourceRecord]:
         with self._lock:

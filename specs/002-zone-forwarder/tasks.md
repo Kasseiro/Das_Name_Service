@@ -99,8 +99,8 @@ zone suffix; everything else stays `NotLocal`.
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] In `ZoneStore.lookup` in `dnsd/zone.py`, add rows 3–5 of data-model § ZoneStore state › lookup: if `records` exists (non-empty) but has no record of `qtype` (and the CNAME row of T011 does not apply), return `NoData()` (FR-006); if the name has no records, walk `candidate = name`, then `candidate.parent()` while `candidate.labels` is non-empty, including the root at the end, and return `NXDomain()` as soon as a candidate is in `self._suffixes` (FR-007); otherwise `NotLocal()`
-- [ ] T010 [US2] Check US2: `pytest --impl=. tests/test_zone.py::test_nodata tests/test_zone.py::test_nxdomain_under_local_suffix` — all pass; re-run T008's command to confirm no regression
+- [X] T009 [US2] In `ZoneStore.lookup` in `dnsd/zone.py`, add rows 3–5 of data-model § ZoneStore state › lookup: if `records` exists (non-empty) but has no record of `qtype` (and the CNAME row of T011 does not apply), return `NoData()` (FR-006); if the name has no records, walk `candidate = name`, then `candidate.parent()` while `candidate.labels` is non-empty, including the root at the end, and return `NXDomain()` as soon as a candidate is in `self._suffixes` (FR-007); otherwise `NotLocal()`
+- [X] T010 [US2] Check US2: `pytest --impl=. tests/test_zone.py::test_nodata tests/test_zone.py::test_nxdomain_under_local_suffix` — all pass; re-run T008's command to confirm no regression
 
 **Checkpoint**: US1 and US2 complete.
 

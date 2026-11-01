@@ -661,3 +661,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-032
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-031
+- **Prompt:**
+  ```
+  Continue with Phase 4
+  ```
+- **Why this prompt:** next checkpoint: negative local answers (US2, T009–T010).
+- **Expected:** lookup returns NoData / NXDomain per contract.md; US2 tests pass, US1 still green.
+- **Got:** as expected; test_nodata and test_nxdomain_under_local_suffix pass, US1 set still green (25/25 cases). Unprompted edge checks: the suffix itself (home.lan.) and a name below a local name give NXDomain; lan., other.lan. and the root stay NotLocal. ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
