@@ -412,6 +412,76 @@ def _read_question(data: bytes, offset: int) -> tuple[Question, int]:
     return Question(name, qtype, qclass), pos + 4
 
 
+def _read_rdata(data: bytes, offset: int, rtype: int, rdlength: int) -> RData:
+    """Decode RDATA of rdlength bytes at offset; names are decompressed (FR-022, FR-023)."""
+    end = offset + rdlength
+    if end > len(data):
+        raise _ParseError("RDATA runs past the end")
+    if rtype == TYPE_A:
+        if rdlength != 4:
+            raise _ParseError("A RDATA must be 4 bytes")
+        return A(IPv4Address(data[offset:end]))
+    if rtype == TYPE_AAAA:
+        if rdlength != 16:
+            raise _ParseError("AAAA RDATA must be 16 bytes")
+        return AAAA(IPv6Address(data[offset:end]))
+    rdata: RData
+    if rtype in (TYPE_CNAME, TYPE_NS, TYPE_PTR):
+        name, pos = _read_name(data, offset)
+        rdata = _RDATA_CLASS[rtype](name)
+    elif rtype == TYPE_MX:
+        if offset + 2 > end:
+            raise _ParseError("MX RDATA too short")
+        (preference,) = struct.unpack_from("!H", data, offset)
+        exchange, pos = _read_name(data, offset + 2)
+        rdata = MX(preference, exchange)
+    elif rtype == TYPE_SOA:
+        mname, pos = _read_name(data, offset)
+        rname, pos = _read_name(data, pos)
+        if pos + 20 > end:
+            raise _ParseError("SOA RDATA too short")
+        rdata = SOA(mname, rname, *struct.unpack_from("!IIIII", data, pos))
+        pos += 20
+    else:
+        return Raw(data[offset:end])
+    if pos != end:
+        raise _ParseError("RDATA does not fill RDLENGTH exactly")
+    return rdata
+
+
+def _read_record(data: bytes, offset: int) -> tuple[ResourceRecord, int]:
+    name, pos = _read_name(data, offset)
+    if pos + 10 > len(data):
+        raise _ParseError("record header runs past the end")
+    rtype, rclass, ttl, rdlength = struct.unpack_from("!HHIH", data, pos)
+    pos += 10
+    rdata = _read_rdata(data, pos, rtype, rdlength)
+    return ResourceRecord(name, rtype, rclass, ttl, rdata), pos + rdlength
+
+
+def decode_message(data: bytes) -> Message | Malformed:
+    """Decode a complete message, all four sections; all or nothing. Never raises."""
+    try:
+        if len(data) < 12:
+            return Malformed()
+        header, (qdcount, ancount, nscount, arcount) = _read_header(data)
+        pos = 12
+        questions = []
+        for _ in range(qdcount):
+            question, pos = _read_question(data, pos)
+            questions.append(question)
+        sections: list[list[ResourceRecord]] = []
+        for count in (ancount, nscount, arcount):
+            records = []
+            for _ in range(count):
+                record, pos = _read_record(data, pos)
+                records.append(record)
+            sections.append(records)
+    except (_ParseError, struct.error, ValueError):
+        return Malformed()
+    return Message(header, questions, *sections)
+
+
 def decode_query(data: bytes) -> Short | IsResponse | NotImp | FormErr | Message:
     """Classify a received message by FR-008 rules 1-6, in order. Never raises."""
     if len(data) < 12:

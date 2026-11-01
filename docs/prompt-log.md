@@ -352,3 +352,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-016
+- **Module:** parser
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-015
+- **Prompt:**
+  ```
+  Continue with Phase 5.
+  ```
+- **Why this prompt:** next checkpoint; decode_message completes the interface 002–004 depend on.
+- **Expected:** Phase 5 (T030–T032): _read_rdata, decode_message, contract check.
+- **Got:** as expected. T032 checker executes the code blocks of contracts/interfaces.md and compares them programmatically with the modules instead of copying signatures by hand: 70 checks pass (first run had 2 failures caused by its own checker's alias handling, not by dnsd/). Round trip of compressed dnspython replies (7 answer/2 authority/2 additional; NXDOMAIN with SOA) gives equal records and readable SOA TTL/MINIMUM; 10,000 random/corrupted inputs never make either decoder raise; all malformed RDATA cases return Malformed. 41 gate cases still pass, ruff/bandit clean. Re-encoded replies grow without compression (273 → 470 bytes), as planned.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
