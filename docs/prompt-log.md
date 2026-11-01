@@ -301,3 +301,54 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-013
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-implement Work through tasks.md in order. Stop after each phase checkpoint and report so I can review before continuing. Revert the temporary stub edits in T035 and T038 and show git diff afterwards. Do not modify tests/, do not commit, do not write prompt-log entries.
+  ```
+- **Why this prompt:** implement phase by phase with a human review at each checkpoint (Principle X), and keep temporary verification edits out of commits.
+- **Expected:** Phase 1–2 (T001–T015): dnsd/__init__.py, parser.py model and wire helpers, listener.py shared types, Stats, placeholders, stub handler.
+- **Got:** as expected; checkpoint passes (imports work, ruff and bandit clean). It discovered that unpinned ruff 0.17.3 enables far broader default rules (TRY, BLE, PLR, RUF) than the plan assumed (verified independently: BLE001 fires on a bare `except Exception` with no config). TRY004 conflicted with the contract's ValueError, which it kept with one justified noqa, and it flagged that the required catch-all excepts would hit BLE001. Unprompted additions: constructor type checks on name fields (to keep encode from raising), UTF-8 handling of non-ASCII in Name.from_text, Python patterns added to .gitignore. All reported for review.
+- **Verdict:** worked
+- **Failure mode:** – (tooling drift: plan assumed ruff's old default rule set)
+- **Fixed by:** S-014 (keep ruff defaults, single-line justified noqa per Principle VII; pinning ruff to be raised with the team)
+- **Commit:** 
+
+### S-014
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-013
+- **Prompt:**
+  ```
+  Keep ruff's defaults; use a single-line # noqa with a reason where the spec requires it (BLE001 for the FR-011/FR-020 catch-alls). Points 2–4 accepted. Continue with Phase 3.
+  ```
+- **Why this prompt:** settle the ruff question within Principle VII without changing shared CI config, and continue to US1.
+- **Expected:** Phase 3 (T016–T024): decode_query, _finalise, _account, _process, UDP/TCP servers, serve(), __main__.py.
+- **Got:** as expected; decode_query split into shared _read_header/_read_question for reuse by decode_message. T024: US1 gate tests 10/10 passed (including parametrised cases), non-error QR/RA cases 8 passed, quickstart one-liners correct over UDP and TCP; ruff/bandit clean, no noqa needed yet. It flagged on its own that T020's allow_reuse_address=True on UDP lets a second instance bind the same port silently.
+- **Verdict:** worked
+- **Failure mode:** – (task-level design flaw in T020, raised by the AI)
+- **Fixed by:** S-015 (UDP reuse dropped)
+- **Commit:** 
+
+### S-015
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-014
+- **Prompt:**
+  ```
+  Drop allow_reuse_address for the UDP server only; keep it for TCP. Then continue with Phase 4.
+  ```
+- **Why this prompt:** SO_REUSEADDR on UDP lets two instances bind the same port silently and split queries between them; TCP keeps it for fast restarts. Then continue to US2.
+- **Expected:** one-line UDP fix; Phase 4 (T025–T029): bare FORMERR/NOTIMP replies, handler fallback, catch-alls.
+- **Got:** as expected. Four single-line `# noqa: BLE001 - FR-0xx: <reason>` suppressions (two FR-020, two FR-011); it also moved the earlier TRY004 reason inline for consistency. T029: 31/31 cases passed, all 11 gate tests green. Deferred tests fail only on the final blocked-name probe (needs 004); fuzz fails at its first canary with SERVFAIL, never "server exited". ruff/bandit clean.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
