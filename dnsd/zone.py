@@ -36,6 +36,10 @@ class ZoneStore:
 
     def lookup(self, name: Name, qtype: int) -> Answer | NoData | NXDomain | NotLocal:
         with self._lock:
+            records = self._by_name.get(name, [])
+            matches = tuple(record for record in records if record.rtype == qtype)
+            if matches:
+                return Answer(matches)
             return NotLocal()
 
     def records(self) -> list[ResourceRecord]:

@@ -644,3 +644,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-031
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-030
+- **Prompt:**
+  ```
+  Continue with Phase 3
+  ```
+- **Why this prompt:** next checkpoint: local answers (US1, T007–T008).
+- **Expected:** lookup returns Answer for matching records; US1 tests and the three big.home.lan tests deferred from 001 pass.
+- **Got:** as expected; 11 tests (13 cases) pass, including the three 001-deferred truncation/EDNS tests and the full check of test_truncated_response_keeps_question_and_whole_records. ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
