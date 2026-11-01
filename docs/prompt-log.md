@@ -386,3 +386,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-018
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-017
+- **Prompt:**
+  ```
+  Continue with Phase 7.
+  ```
+- **Why this prompt:** next checkpoint: command line (US4).
+- **Expected:** T036 verification of __main__.py; fixes only if needed.
+- **Got:** all checks passed with no code change: host:port split at the last colon; missing or malformed flags give argparse usage and exit 2; zone/blocklist paths never opened (server starts with non-existent files); first UDP query answered 0.20 s after launch (SC-005: 5 s); harness test passes. Noted without changing anything: IPv6 brackets are kept by the split and the servers are IPv4-only, both outside contract.md's scope.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**

@@ -174,7 +174,7 @@ and observe usage + exit status 2.
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Verify `dnsd/__main__.py` (built in T023) against FR-001/FR-002 and research R-10: `--listen 127.0.0.1:5353` yields `("127.0.0.1", 5353)` (split at the **last** `:`); `--zone`/`--blocklist` are kept as given strings and not opened; `python -m dnsd --listen 127.0.0.1:5353` prints argparse usage and exits 2; `--listen 127.0.0.1:abc` exits 2 via the `ValueError` from `int()`; with valid flags the first UDP query is answered within 5 s (SC-005, `tests/test_harness.py::test_server_starts_with_documented_flags`). Fix `dnsd/__main__.py` only if a check fails
+- [X] T036 [US4] Verify `dnsd/__main__.py` (built in T023) against FR-001/FR-002 and research R-10: `--listen 127.0.0.1:5353` yields `("127.0.0.1", 5353)` (split at the **last** `:`); `--zone`/`--blocklist` are kept as given strings and not opened; `python -m dnsd --listen 127.0.0.1:5353` prints argparse usage and exits 2; `--listen 127.0.0.1:abc` exits 2 via the `ValueError` from `int()`; with valid flags the first UDP query is answered within 5 s (SC-005, `tests/test_harness.py::test_server_starts_with_documented_flags`). Fix `dnsd/__main__.py` only if a check fails
 
 **Checkpoint**: Operator-facing startup matches contract.md § Command line.
 
