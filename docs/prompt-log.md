@@ -437,3 +437,24 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** minor: its summary counts of deferred tests didn't add up (7 + 3); verified by hand: 9 tests / 11 cases, as expected
 - **Fixed by:** –
 - **Commit:**
+
+### S-021
+- **Module:** (project)
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-001
+- **Prompt:**
+  ```
+  /speckit-constitution Amend to version 1.1.0 (MINOR). Change only these:
+  1. Principle X: Johnny builds all remaining features; Daniel reviews every PR before merge. Nobody merges their own AI-generated code.
+  2. Technical Constraints: a red CI run blocks merge, except for failures in tests that the feature's spec lists as deferred to a later feature (spec § Verification status); the reviewer checks that every failure is one of those.
+  3. Governance: amendments need approval from the active team members (Johnny and Daniel).
+  Update the Sync Impact Report. Change nothing else. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** change of plan: Adam unavailable, Daniel finishing the vibe build, so Johnny builds 002–004 and Daniel reviews. Also, the 1.0.0 CI rule made it impossible to merge any feature first, because CI runs the whole suite (raised in the 001 PR and approved there).
+- **Expected:** three targeted edits, version 1.1.0, updated Sync Impact Report.
+- **Got:** the three edits plus one unrequested but necessary change (Principle X's rationale still mentioned the rotation), all reported. It flagged that by the constitution's own versioning rule the Principle X change could count as MAJOR (2.0.0); kept MINOR as instructed, since the rule itself (independent review, no self-merge) is unchanged and only the reviewer assignment changed. It left Principle IX's rationale ("three developers") stale on purpose and listed it as a follow-up.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** manual edits: Principle IX rationale updated; README review-order bullet and change-of-plan note added
+- **Commit:**

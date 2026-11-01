@@ -15,9 +15,10 @@ both builds.
 
 - Spec work starts only after `vibe-final` is tagged in `Vibe_Name_Service`.
   The test suite can be written before that, from `contract.md` and the RFCs only.
-- Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
+- Nobody merges their own AI-generated code. Daniel reviews every spec-build PR (see change of plan below).
 - Every `/speckit.*` call and every implementation prompt whose output gets
   committed goes in `docs/prompt-log.md`.
+- Change of plan (2026-11-01): Johnny builds all spec-build features (001–004); Daniel reviews. One developer wrote every spec, unlike the vibe build.
 
 Note for threats to validity (report 5.1): this build had the test suite available
 during development; the vibe build did not.
