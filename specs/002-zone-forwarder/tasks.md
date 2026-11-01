@@ -116,8 +116,8 @@ that type if the target is local.
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] In `ZoneStore.lookup` in `dnsd/zone.py`, add row 2 of data-model § ZoneStore state › lookup, between "records of qtype" and `NoData`: if `qtype != TYPE_CNAME` and the name has CNAME records, return `Answer(tuple(cnames + [r for c in cnames for r in self._by_name.get(c.rdata.target, []) if r.rtype == qtype]))` (FR-008). One step only: never look at CNAMEs of the target. Nothing is sent upstream for an outside target
-- [ ] T012 [US3] Check US3: `pytest --impl=. tests/test_zone.py::test_cname_is_followed_inside_the_zone tests/test_zone.py::test_cname_to_local_target_without_the_requested_type tests/test_zone.py::test_cname_to_target_outside_the_zone` — all pass; re-run T008 and T010's commands
+- [X] T011 [US3] In `ZoneStore.lookup` in `dnsd/zone.py`, add row 2 of data-model § ZoneStore state › lookup, between "records of qtype" and `NoData`: if `qtype != TYPE_CNAME` and the name has CNAME records, return `Answer(tuple(cnames + [r for c in cnames for r in self._by_name.get(c.rdata.target, []) if r.rtype == qtype]))` (FR-008). One step only: never look at CNAMEs of the target. Nothing is sent upstream for an outside target
+- [X] T012 [US3] Check US3: `pytest --impl=. tests/test_zone.py::test_cname_is_followed_inside_the_zone tests/test_zone.py::test_cname_to_local_target_without_the_requested_type tests/test_zone.py::test_cname_to_target_outside_the_zone` — all pass; re-run T008 and T010's commands
 
 **Checkpoint**: The local zone (FR-004 – FR-008) is complete.
 

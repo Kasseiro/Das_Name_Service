@@ -678,3 +678,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-033
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-032
+- **Prompt:**
+  ```
+  Continue with Phase 5
+  ```
+- **Why this prompt:** next checkpoint: one-step CNAME (US3, T011–T012).
+- **Expected:** CNAME case between "records of this type" and NODATA; CNAME tests pass.
+- **Got:** as expected; CNAME first, then target records of the requested type only if the target is local; one step only; a CNAME query still returns just the CNAME. Three CNAME tests pass, US1–US2 still green (29/29 cases). ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

@@ -40,6 +40,16 @@ class ZoneStore:
             matches = tuple(record for record in records if record.rtype == qtype)
             if matches:
                 return Answer(matches)
+            cnames = [record for record in records if record.rtype == TYPE_CNAME]
+            if cnames and qtype != TYPE_CNAME:
+                # contract.md § Zone file › CNAME: one step; a target outside the zone adds nothing.
+                targets = [
+                    record
+                    for cname in cnames
+                    for record in self._by_name.get(cname.rdata.target, [])
+                    if record.rtype == qtype
+                ]
+                return Answer(tuple(cnames + targets))
             if records:
                 return NoData()
             candidate = name
