@@ -712,3 +712,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-035
+- **Module:** forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-034
+- **Prompt:**
+  ```
+  Continue with Phase 7
+  ```
+- **Why this prompt:** next checkpoint: upstream exchange and the cache/forward branch (US5, T018–T021).
+- **Expected:** exchange() with UDP, TCP retry and one 2 s deadline; handler forwards and replaces the temporary SERVFAIL.
+- **Got:** as expected. exchange: secrets-drawn ID and source port (each in one helper, for an easy Principle VI review), UDP socket connected to the upstream, reply counts only with QR=1, matching ID and question, TCP retry with a new ID, any OSError → None. Handler: cache get → "cached"; failure → SERVFAIL "error" without put; reply → put, then relay RCODE and sections with AA=0, "error" if the upstream said SERVFAIL (Q1). Bandit accepted the ("", port) bind, so the T027 fallback is unneeded. T021: 19 tests / 26 cases pass, including the TCP retry and the three formerly trivial blocklist tests; regression over zone/blocklist/listener/harness 99/99. 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
