@@ -695,3 +695,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-034
+- **Module:** blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-033
+- **Prompt:**
+  ```
+  Continue with Phase 6
+  ```
+- **Why this prompt:** next checkpoint: blocklist store, loader and blocked responses (US4, T013–T017).
+- **Expected:** dnsd/blocklist.py, blocked branch in the handler, __main__ wiring; blocklist tests and the 001 blocklist-dependent tests pass.
+- **Got:** as expected. Blocklist store with one lock, case-insensitive de-duplication, whole-label matching by walking up to the root; load_blocklist with "#" comments, one domain per line, "<path>:<line>: …" errors. Handler builds 0.0.0.0/:: with TTL 60 and AA=0, or NXDOMAIN for other types, result "blocked". test_blocklist.py 22/22 cases (three pass trivially until forwarding exists, as T017 notes), the five 001 listener tests 7/7, US1–US3 29/29; fixture loads its four entries; a malformed line exits 1. ruff/bandit clean. Its report did not mention the sixth 001-deferred test (fuzz); verified by hand: <passed / failed>.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

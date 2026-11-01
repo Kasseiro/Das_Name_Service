@@ -2,10 +2,10 @@
 import argparse
 import sys
 
+from dnsd.blocklist import load_blocklist
 from dnsd.forwarder import make_handler
 from dnsd.listener import (
     Config,
-    PlaceholderBlocklist,
     PlaceholderCache,
     PlaceholderQueryLog,
     ServerState,
@@ -32,13 +32,14 @@ def main() -> None:
     config = Config(args.listen, args.admin, args.upstream, args.zone, args.blocklist)
     try:
         zone = load_zone(args.zone)
+        blocklist = load_blocklist(args.blocklist)
     except (OSError, ValueError) as exc:
         print(f"dnsd: {exc}", file=sys.stderr)
         sys.exit(1)
     state = ServerState(
         config,
         zone,
-        PlaceholderBlocklist(),
+        blocklist,
         PlaceholderCache(),
         Stats(),
         PlaceholderQueryLog(),
