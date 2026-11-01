@@ -116,3 +116,47 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-004 ★
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-plan Python 3.11, standard library only (Principle III). Keep it minimal (Principle VIII): no frameworks, no extra layers, no new dependencies.
+
+  - Files: dnsd/__init__.py, dnsd/__main__.py (argparse and startup), dnsd/parser.py (message model, decode/encode, type mnemonics, name text form), dnsd/listener.py (UDP and TCP serving, query intake, response finalisation, Stats, ServerState container, placeholder stores, stub handler). No other files unless a requirement needs one.
+  - Concurrency: socketserver.ThreadingUDPServer and ThreadingTCPServer with daemon threads. Each store guards itself with its own threading.Lock; no lock is held during network I/O or while calling another store (FR-028, FR-029).
+  - Message model as frozen dataclasses; Message holds lists of records.
+  - TCP idle timeout: 5 seconds.
+  - Errors go to stderr with print; no logging framework.
+  - contracts/: write the inter-module interfaces from the spec as concrete Python signatures (message model types and functions, Query/Outcome and the handler signature, ServerState and each store's methods). This file is the binding interface for features 002–004.
+  - Verification is the existing black-box suite in tests/; do not add test files or modify tests/.
+  ```
+- **Why this prompt:** pin the technical choices (four files, stdlib only, socketserver threads, per-store locks) up front so the plan cannot over-engineer, and get the inter-module interfaces as concrete Python signatures that features 002–004 build on.
+- **Expected:** plan.md, research.md, data-model.md, contracts/ and quickstart.md within the given constraints.
+- **Got:** all five artifacts. Constitution check passes before and after design, nothing in Complexity Tracking. research.md records 12 design decisions (R-1–R-12) with rejected alternatives; contracts/interfaces.md holds the binding signatures (message model, Query/Outcome/Handler, ServerState, each store's methods, concurrency rules, serve()). Unprompted but within the spec: no name compression on write, truncated UDP replies carry header and question only, one 5 s deadline per TCP connection, stats and log recorded before sending. It flagged two places where it interpreted rather than followed the spec (R-3: decode_query returns Message instead of Query(Message); R-9: zone result types and LogEntry defined in listener.py) and asked for a decision instead of silently diverging.
+- **Verdict:** worked
+- **Failure mode:** – (minor spec/contract mismatch, raised by the AI itself)
+- **Fixed by:** S-005 (spec amended)
+- **Commit:**
+
+### S-005
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-004
+- **Prompt:**
+  ```
+  Accept R-3 and R-9. Amend spec.md § Inter-module interfaces so it agrees with contracts/interfaces.md: decode_query returns the Message itself for a valid query (no separate Query(Message) type), and the zone result types (Answer, NoData, NXDomain, NotLocal, Invalid) and LogEntry are defined in dnsd/listener.py, imported from there by features 002–004. Change nothing else.
+
+  (follow-up) Yes, update those lines in research.md and plan.md to say R-3 and R-9 were accepted and the spec amended. Nothing else.
+  ```
+- **Why this prompt:** spec.md and contracts/interfaces.md must agree (Principle IX); without the amendment /speckit-analyze would flag the mismatch and 002–004 would not know where to import the shared types from.
+- **Expected:** two targeted edits to spec.md § Inter-module interfaces.
+- **Got:** exactly those two edits (decode_query signature, a sentence on where the shared types live). It then pointed out on its own that research.md (R-3) and plan.md's post-design re-check still described R-3/R-9 as unamended interpretations, and updated those lines on request.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**

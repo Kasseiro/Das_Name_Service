@@ -453,9 +453,10 @@ changing either is an amendment of this spec.
   not part of identity.
 - **Message**: `header`, `questions`, `answers`, `authority`, `additional` (ordered lists).
 - **Operations**:
-  - `decode_query(bytes) → Short | IsResponse | NotImp(header) | FormErr(header) | Query(Message)`:
-    the classification of FR-008, rules 1–6 in that order. Reads the header and, only for rule 5,
-    the one question; never reads the answer, authority or additional sections.
+  - `decode_query(bytes) → Short | IsResponse | NotImp(header) | FormErr(header) | Message`:
+    the classification of FR-008, rules 1–6 in that order; for a valid query (rule 6) it returns
+    the decoded Message itself, with no separate wrapper type. Reads the header and, only for
+    rule 5, the one question; never reads the answer, authority or additional sections.
   - `decode_message(bytes) → Message | Malformed`: reads every section (used by the forwarder for
     upstream replies). Fails as a whole; never returns a partial message.
   - `encode(Message) → bytes`: writes the message; names MAY be compressed on write. Never fails
@@ -482,7 +483,9 @@ changing either is an amendment of this spec.
 
 `ServerState` holds `config` (Config) and one instance of each store below. Operations follow
 FR-028 to FR-030. Names given to operations are Name values; the admin API converts text with
-`Name.from_text` and the record helpers below.
+`Name.from_text` and the record helpers below. The ZoneStore result types (`Answer`, `NoData`,
+`NXDomain`, `NotLocal`, `Invalid`) and `LogEntry` are defined in `dnsd/listener.py`, next to
+ServerState, and features 002–004 import them from there.
 
 | Store | Owner module | Operations | Used by |
 |---|---|---|---|
