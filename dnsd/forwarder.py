@@ -108,6 +108,7 @@ def _exchange_tcp(upstream: tuple[str, int], question: Question,
                   deadline: float) -> Message | None:
     qid, wire = _query(question)  # a new random ID for the retry, too
     with socket.create_connection(upstream, timeout=_remaining(deadline)) as sock:
+        sock.settimeout(_remaining(deadline))
         sock.sendall(struct.pack("!H", len(wire)) + wire)
         (length,) = struct.unpack("!H", _recv_exact(sock, 2, deadline))
         return _counting(_recv_exact(sock, length, deadline), qid, question)

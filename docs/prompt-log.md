@@ -729,3 +729,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-036 ★
+- **Module:** forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-035
+- **Prompt:**
+  ```
+  Continue with Phase 8
+  ```
+- **Why this prompt:** next checkpoint: Principle VI review and spoofing/failure checks (US6, T022–T024).
+- **Expected:** review of exchange; US6 tests pass; manual unreachable-upstream check.
+- **Got:** the T022 review confirmed ID/port come only from secrets, fresh per call, a new ID on the TCP retry, nothing configurable, one deadline. It found a real defect in its own Phase 7 code: the TCP sendall used the connect-time timeout instead of the remaining budget, so a slow connect plus a slow send could overrun 2 s; fixed with one settimeout line. T023: 8 US6 tests pass (random ID/port, wrong ID ignored, timeouts over UDP and TCP, recovery, full fuzz stream); the TCP-retry tests re-run after the fix, 10/10. T024: unreachable upstream gives SERVFAIL in 0.002 s (ICMP on the connected socket), the server keeps answering, nothing on stderr. This also confirms the 001-deferred fuzz test now passes.
+- **Verdict:** worked
+- **Failure mode:** deadline bug in its own S-035 code, caught by its own review task before commit
+- **Fixed by:** same prompt
+- **Commit:** <hash>
