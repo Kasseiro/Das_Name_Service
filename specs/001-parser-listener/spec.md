@@ -532,6 +532,8 @@ its slot with an empty placeholder that has the same operations.
 
 ### Verification status
 
+Superseded 2026-11-02: the blocklist store moved to 002; the six blocklist-dependent tests are verified there (see 002 § Verification status).
+
 **Acceptance gate (decided in clarification, Q2)**: this feature is accepted when the 11
 stub-compatible tests below pass under `pytest tests --impl .` with only the stub handler installed.
 The other 9 named tests are re-checked when the features they depend on merge; the requirements

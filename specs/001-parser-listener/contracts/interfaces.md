@@ -260,7 +260,7 @@ does not exist would be an undefined name for `ruff` (F821, Principle VII).
 
 Each store class below must provide exactly these methods. The comments on the `ServerState`
 fields above name the roles; the classes that fill them are the placeholders in `dnsd.listener` (feature 001) and later
-`zone.ZoneStore` (002), `cache.Cache` (003), `blocklist.Blocklist` and `querylog.QueryLog` (004).
+`zone.ZoneStore` and `blocklist.Blocklist` (002), `cache.Cache` (003) and `querylog.QueryLog` (004).
 `Stats` is final in `dnsd.listener`.
 
 ```python
@@ -274,7 +274,7 @@ class ZoneStore:                              # owner: zone (002)
     def value_text(self, record: ResourceRecord) -> str: ...  # zone-file form of rdata; pure
 
 
-class Blocklist:                              # owner: blocklist (004)
+class Blocklist:                              # owner: blocklist (002)
     def is_blocked(self, name: Name) -> bool: ...
     def domains(self) -> list[Name]: ...                    # listed entries, new list each call
     def add(self, name: Name) -> None: ...                  # idempotent

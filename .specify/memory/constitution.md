@@ -1,6 +1,28 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.1.0 → 1.1.1
+Bump rationale: PATCH. Development Workflow's list of feature specs is updated to the new split;
+no principle or rule changes.
+
+Modified sections:
+- Development Workflow: feature list "parser + listener, zone + forwarder, cache, blocklist +
+  admin API" → "parser + listener, zone + blocklist + forwarder, cache, query log + admin API".
+  The blocklist store moved from the fourth feature to the second (002 spec § Clarifications,
+  2026-11-02). Module list of Principle IX unchanged.
+
+Modified principles: none
+Added sections: none
+Removed sections: none
+
+Templates: not modified (they read the constitution at runtime).
+
+Approval: Daniel approves in the 002 PR (Governance: Johnny and Daniel).
+
+Follow-up TODOs: none
+
+Previous report (1.0.0 → 1.1.0)
+-------------------------------
 Version change: 1.0.0 → 1.1.0
 Bump rationale: MINOR. Principle X's review rule is redefined for the current team, and the
 CI merge gate gains a narrowly scoped exception for deferred tests. No principle is removed.
@@ -148,8 +170,8 @@ makes sure every change has one.
 
 - Order: `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` →
   `/speckit-analyze` → `/speckit-implement`, one spec per feature: parser + listener, zone +
-  forwarder, cache, blocklist + admin API. The parser + listener spec comes first because it
-  defines the inter-module interfaces (Principle IX).
+  blocklist + forwarder, cache, query log + admin API. The parser + listener spec comes first
+  because it defines the inter-module interfaces (Principle IX).
 - Spec Kit feature branches are kept after merge.
 - Every Spec Kit call and implementation prompt whose output is committed is logged in
   `docs/prompt-log.md` with an `S-NNN` ID.
@@ -168,4 +190,4 @@ makes sure every change has one.
 - Every review (Principle X) and every `/speckit-analyze` run checks compliance with this
   constitution. A violation blocks merge until fixed or until the constitution is amended.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-31 | **Last Amended**: 2026-11-01
+**Version**: 1.1.1 | **Ratified**: 2026-10-31 | **Last Amended**: 2026-11-02

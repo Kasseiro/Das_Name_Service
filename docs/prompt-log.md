@@ -458,3 +458,57 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** manual edits: Principle IX rationale updated; README review-order bullet and change-of-plan note added
 - **Commit:**
+
+### S-022 ★
+- **Module:** zone, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-specify Feature: local zone, forwarder and the real resolution handler for dnsd. Builds on feature 001: use the message model, Query/Outcome/Handler, ServerState and the store roles from specs/001-parser-listener/contracts/interfaces.md; import shared types from dnsd.listener and do not redefine them (Principle IX).
+
+  Scope:
+  - Zone file loading per contract.md § Zone file, at startup, before the server answers (FR-005 of 001). A ZoneStore filling the zone role exactly as interfaces.md defines it, including the operations the admin API will use (records, add, remove, make_record, value_text).
+  - Local answers per contract.md § Responses and § Zone file: records, NODATA, NXDOMAIN under a local zone suffix, CNAME handling, AA=1.
+  - Forwarder per contract.md § Forwarded queries: random query ID and source port per query from secrets (Principle VI), only replies with a matching ID count, 2 s budget, TCP retry on TC=1, SERVFAIL on timeout or failure.
+  - The real resolution handler that replaces stub_handler: applies the rows of contract.md § Responses top to bottom (local zone, blocked, cache, forward), building the blocked responses itself and calling the blocklist and cache roles through ServerState. Until features 003 and 004 replace their placeholders, those branches never fire.
+  - Outcome fields per 001's interface: result and upstream_asked set correctly for every path.
+
+  Out of scope: the cache store's logic (003), the blocklist store, query log store and admin API (004).
+
+  Verified by: tests/test_zone.py, tests/test_forwarder.py, and the three deferred 001 tests that need big.home.lan (test_udp_response_over_512_bytes_is_truncated, test_truncated_answer_is_complete_over_tcp, test_edns_does_not_raise_udp_limit).
+  ```
+- **Why this prompt:** specify 002 on top of 001's interfaces; put the contract's response-table logic (including blocked responses) in the handler so later features only supply stores.
+- **Expected:** spec.md with FRs mapped to tests in test_zone.py and test_forwarder.py.
+- **Got:** spec.md with 22 FRs, each naming its tests, and a checklist. One clarification question: whether an upstream SERVFAIL relayed to the client is logged as "forwarded" or "error" (the contract's wording fits both; no test checks it). It also found on its own that 14 of 34 tests could not pass in 002 however correct the code: the test harness probes readiness with ads.example.com, which without a blocklist goes upstream and makes every exact upstream-count assertion off by one. This included the two random-ID/port security tests (Principle VI), for which it proposed a manual check.
+- **Verdict:** partly
+- **Failure mode:** – (scope problem caused by the feature split, found by the AI)
+- **Fixed by:** S-023 (Q1 answered; Blocklist store moved into 002)
+- **Commit:** 
+
+### S-023 ★
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-022
+- **Prompt:**
+  ```
+  Q1: A.
+
+  Scope change: since I am building all features, move the Blocklist store into 002: blocklist file loading per contract.md § Blocklist file at startup, and a store filling the blocklist role exactly as interfaces.md defines it (is_blocked with whole-label, case-insensitive matching; domains, add, remove). 004 keeps only the query log store and the admin API. Update the spec accordingly: scope, requirements with their tests, and Verification status. Recount which tests are still deferred and to which feature (003 cache, 004 querylog/api), and drop the manual security check if the random ID/port tests become verifiable. Do not touch tests/ and do not write prompt-log entries.
+
+  (follow-up) Apply the follow-ups in this branch:
+  1. Constitution § Development Workflow: change the feature list to "parser + listener, zone + blocklist + forwarder, cache, query log + admin API". Version 1.1.1 (PATCH), update the Sync Impact Report; Daniel approves it in the 002 PR.
+  2. README.md: update the feature list on line 38 the same way. Keep my existing edits.
+  3. 001: in contracts/interfaces.md change the blocklist owner from 004 to 002. In 001 spec.md § Verification status add one line: "Superseded 2026-11-02: the blocklist store moved to 002; the six blocklist-dependent tests are verified there (see 002 § Verification status)." Change nothing else in 001.
+  4. 002 checklist Notes: remove the stale Principle IV note about 14 deferred tests and the manual FR-013 check.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** Q1 per the contract's literal "error (SERVFAIL)". Moving the blocklist into 002 removes the off-by-one caused by the harness's readiness probe, so 002 can be verified on its own, including the Principle VI tests, without manual checks. The follow-ups bring the constitution, README and 001 in line with the new split.
+- **Expected:** spec updated with the blocklist in scope and tests recounted; the follow-up edits in the other files.
+- **Got:** spec rewritten: User Story 4 (blocking), FR-002/003 (blocklist loading), FR-013/014 (Blocklist store), FRs renumbered to FR-001–FR-025, Q1 and the scope change recorded under Clarifications. Recount: 65 tests required (13 zone, 22 forwarder, 10 blocklist, all 20 listener/fuzz/harness); deferred: 9 to 004, 2 to 003, 4 to 003+004; none of 001's tests deferred any more; manual security check dropped. It found on its own that the constitution, README and 001's spec and interfaces.md still described the old split, and left them unedited until asked. Follow-up: constitution 1.1.1 (PATCH) with an updated Sync Impact Report, README feature list, the 001 blocklist owner changed in both places in interfaces.md (one more than named, needed for consistency), the superseded note added verbatim; the stale checklist note had already been removed in the rewrite.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

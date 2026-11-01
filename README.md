@@ -18,7 +18,7 @@ both builds.
 - Nobody merges their own AI-generated code. Daniel reviews every spec-build PR (see change of plan below).
 - Every `/speckit.*` call and every implementation prompt whose output gets
   committed goes in `docs/prompt-log.md`.
-- Change of plan (2026-11-01): Johnny builds all spec-build features (001–004); Daniel reviews. One developer wrote every spec, unlike the vibe build.
+- Change of plan (2026-11-01): Johnny builds all spec-build features (001–004); Daniel reviews. One developer wrote every spec, unlike the vibe build. The Blocklist store moved from 004 to 002, because the test harness probes with a blocked name.
 
 Note for threats to validity (report 5.1): this build had the test suite available
 during development; the vibe build did not.
@@ -34,8 +34,8 @@ Then in the agent, in this order:
 
 1. `/speckit.constitution` (Johnny): RFC 1035 is authoritative, `contract.md` is binding,
    no DNS libraries outside tests, every requirement maps to a test.
-2. `/speckit.specify` once per feature: parser + listener, zone + forwarder, cache,
-   blocklist + admin API.
+2. `/speckit.specify` once per feature: parser + listener, zone + blocklist + forwarder, cache,
+   query log + admin API.
 3. `/speckit.clarify` → `/speckit.plan` → `/speckit.tasks` → `/speckit.analyze` → `/speckit.implement`.
 
 Spec Kit creates a feature branch per spec. Keep them; they are evidence for section 4.4.
