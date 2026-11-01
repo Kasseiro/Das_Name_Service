@@ -160,3 +160,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-006
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-tasks
+  ```
+- **Why this prompt:** break the plan into ordered, reviewable implementation tasks.
+- **Expected:** tasks.md touching only the four dnsd/ files, no test tasks.
+- **Got:** tasks.md with 43 tasks (T001–T043) in 9 phases, one per user story plus setup, foundational and polish. Each story ends with a check task running the existing tests or quickstart steps; no new tests. It moved __main__.py into US1, since every check starts the server, and suggested phases 1–3 as MVP (6 of 11 gate tests). Two check tasks (T035, T038) temporarily modify the stub handler and say to revert and confirm with git diff. It listed the prompt-log entry as a task (T043) rather than writing it.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
