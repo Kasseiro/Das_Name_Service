@@ -369,3 +369,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-017
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-016
+- **Prompt:**
+  ```
+  Continue with Phase 6.
+  ```
+- **Why this prompt:** next checkpoint: truncation and OPT rules (US3).
+- **Expected:** Phase 6 (T033–T035): OPT removal, UDP 512/TCP 65535 limits, verification with a temporary 40-record stub, reverted.
+- **Got:** as expected; accounting stays once per query, after the size check. T035: with a temporary stub (40 A records plus an OPT record and TC=1, to exercise more rules) a scratch script passed 12/12 checks: UDP reply truncated to header+question with TC=1 and case kept, EDNS 4096 still limited to 512 with no OPT, TCP complete with TC=0 and OPT removed. Unprompted extras: ran the three deferred 40-record tests against the temporary stub (all pass); tested the 65535-byte TCP branch by calling _process directly with a scratch handler, without editing dnsd/. Revert verified byte-identical to a pre-edit snapshot; no TEMP lines; ruff/bandit clean.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

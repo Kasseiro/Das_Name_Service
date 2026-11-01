@@ -17,6 +17,7 @@ from dnsd.parser import (
     FORMERR,
     NOTIMP,
     SERVFAIL,
+    TYPE_OPT,
     FormErr,
     Header,
     Message,
@@ -209,10 +210,15 @@ def _finalise(query: Message, response: Message) -> Message:
     return Message(
         header,
         list(query.questions),
-        list(response.answers),
-        list(response.authority),
-        list(response.additional),
+        _without_opt(response.answers),
+        _without_opt(response.authority),
+        _without_opt(response.additional),
     )
+
+
+def _without_opt(records: list[ResourceRecord]) -> list[ResourceRecord]:
+    """FR-015: responses never carry an OPT record."""
+    return [record for record in records if record.rtype != TYPE_OPT]
 
 
 def _account(state: ServerState, query: Query, outcome: Outcome, arrival: float) -> None:
@@ -226,6 +232,10 @@ def _account(state: ServerState, query: Query, outcome: Outcome, arrival: float)
         type=type_to_text(question.qtype),
         result=outcome.result,
     ))
+
+
+_UDP_LIMIT = 512
+_TCP_LIMIT = 65535
 
 
 def _servfail_outcome() -> Outcome:
@@ -268,9 +278,20 @@ def _process(data: bytes, client: tuple[str, int], tcp: bool, state: ServerState
     query = Query(decoded, client)
     outcome = _call_handler(handler, query)
     try:
-        wire = encode(_finalise(query.message, outcome.response))
+        finalised = _finalise(query.message, outcome.response)
+        wire = encode(finalised)
     except Exception as exc:  # noqa: BLE001 - FR-020: an unencodable Outcome must become SERVFAIL
         print(f"dnsd: handler error: unusable response: {exc!r}", file=sys.stderr)
+        outcome = _servfail_outcome()
+        finalised = _finalise(query.message, outcome.response)
+        wire = encode(finalised)
+    if not tcp and len(wire) > _UDP_LIMIT:
+        # FR-016: header and question only, TC=1.
+        wire = encode(Message(replace(finalised.header, tc=True), list(finalised.questions)))
+    elif tcp and len(wire) > _TCP_LIMIT:
+        # FR-017: does not fit the 2-byte length prefix.
+        print(f"dnsd: response of {len(wire)} bytes too large for TCP, answering SERVFAIL",
+              file=sys.stderr)
         outcome = _servfail_outcome()
         wire = encode(_finalise(query.message, outcome.response))
     _account(state, query, outcome, arrival)
