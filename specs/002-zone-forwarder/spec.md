@@ -251,8 +251,8 @@ without changes to the zone, blocklist or forwarder modules or the handler.
   the later TTL wins (the same rule as `add`).
 - **Blocklist file lines**: comment lines (first non-blank character `#`, including indented
   ones) and blank lines are skipped; leading and trailing whitespace around an entry is ignored. A
-  `#` later in a line is unspecified by contract.md § Blocklist file; its handling is a plan
-  decision.
+  `#` later in a line is unspecified by contract.md § Blocklist file; the plan treats it as the
+  start of a comment, so `ads.example.com # ads` lists `ads.example.com` (research R-2).
 - **Duplicate blocklist entries**, including the same domain in different case or with and
   without a trailing dot: listed once (the same rule as `add`).
 - **Blocklist entry that is not a valid name** (label over 63 bytes, empty label): not specified

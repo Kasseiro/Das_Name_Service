@@ -512,3 +512,42 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-024
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-plan Python 3.11, standard library only. Keep it minimal (Principle VIII).
+  - Files: dnsd/zone.py (zone file loading, ZoneStore), dnsd/blocklist.py (blocklist file loading, Blocklist store), dnsd/forwarder.py (upstream exchange and the real handler factory, (ServerState) -> Handler). __main__.py changes only to load both files and install the real stores and handler. No changes to parser.py or listener.py signatures (001 interfaces.md is binding).
+  - Forwarder: socket module directly, secrets for ID and port, one deadline of 2 s for the whole exchange including TCP retry.
+  - Stores: one threading.Lock each, per 001 concurrency rules.
+  - Missing or malformed zone/blocklist file: print the problem to stderr and exit non-zero before serving.
+  - Verification is the existing suite; do not add or modify tests/. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** pin files and technical choices up front as for 001. The handler goes in forwarder.py, because Principle IX has no resolver module.
+- **Expected:** plan, research, data model, contract and quickstart within the given constraints.
+- **Got:** all artifacts; Constitution Check (v1.1.1) passes before and after design. 10 decisions in research.md. contracts/modules.md lists the new public names (load_zone, load_blocklist, exchange, make_handler), only imported by __main__; the stores keep exactly their role's methods, so the loaders are module functions. Forwarder: fresh secrets ID (also for the TCP retry) and source port, UDP socket connected to the upstream, reply must match ID and question, one 2 s deadline. Blocked answers built as IPv4Address(0)/IPv6Address(0) to avoid bandit's "0.0.0.0" check. Four decisions flagged for review: ";" comments in zone lines (RFC 1035), blocklist lines with an inline "#" treated as malformed, UDP bind to ("", port) not yet run through bandit, a record directly under the root makes unmatched names NXDOMAIN.
+- **Verdict:** worked
+- **Failure mode:** – (one harsh default: inline "#" in the blocklist refuses startup)
+- **Fixed by:** S-025 (inline "#" treated as comment)
+- **Commit:** 
+
+### S-025
+- **Module:** blocklist
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-024
+- **Prompt:**
+  ```
+  Change one decision: in the blocklist file, text from "#" to the end of a line is a comment (contract.md leaves it unspecified), so "ads.example.com # ads" lists ads.example.com. Update research.md and wherever else it appears. Everything else accepted. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** refusing to start over an inline annotation is harsh; the contract leaves it unspecified, so the forgiving rule is better.
+- **Expected:** decision changed in research.md and wherever it is referenced.
+- **Got:** R-2 rewritten (cut each line at the first "#"; covers whole-line and trailing comments with one step, mirrors the zone file's ";" rule; "#" cannot occur in a hostname); old rule kept as the rejected alternative. data-model.md, the spec's edge case and plan.md's Principle II row updated to match; it confirmed the other artifacts don't mention the rule.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
