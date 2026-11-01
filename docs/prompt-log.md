@@ -610,3 +610,37 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-029
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-implement Work through specs/002-zone-forwarder/tasks.md in order. Stop after each phase checkpoint and report so I can review before continuing. Do not change dnsd/parser.py or dnsd/listener.py. Do not modify tests/, do not commit, do not write prompt-log entries.
+  ```
+- **Why this prompt:** implement 002 phase by phase with a review at each checkpoint (Principle X); keep 001 code untouched (Principle IX).
+- **Expected:** Phase 1 (T001): baseline check.
+- **Got:** tools confirmed (ruff 0.17.3, bandit 1.9.4, pytest 9.2.0); the 11 001 gate tests pass before any change (41/41 cases). Only the task checkbox changed.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-030
+- **Module:** zone, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-029
+- **Prompt:**
+  ```
+  Continue with Phase 2
+  ```
+- **Why this prompt:** next checkpoint: foundational zone store, loader and handler skeleton (T002–T006).
+- **Expected:** dnsd/zone.py, dnsd/forwarder.py skeleton, __main__.py wiring; 001 tests still green.
+- **Got:** as expected. ZoneStore with one lock, records by name and derived suffixes; make_record/value_text pure; load_zone with ";" comments, five-field check and errors as "<path>:<line>: …". make_handler answers from the zone and otherwise returns a temporary SERVFAIL marked for T031. __main__ loads the zone (stderr + exit 1 on error) and installs the real handler. ruff/bandit clean, 001 gate 41/41, parser.py and listener.py unchanged. Manual checks: 46 fixture records, value_text forms, make_record rejects MX, negative/boolean TTL, scoped IPv6 and "01.2.3.4". It resolved a ruff TRY004 finding by restructuring the code instead of suppressing it.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
