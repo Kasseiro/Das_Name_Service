@@ -420,3 +420,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** S-020 (write timeout, quickstart port)
 - **Commit:**
+
+### S-020
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-019
+- **Prompt:**
+  ```
+  Give the TCP reply write its own fixed timeout (one line), and change the quickstart port from 5353 to a free one. Then continue with Phase 9 and give the final report.
+  ```
+- **Why this prompt:** fix the two small issues found in S-019, then finish the polish phase (T039–T042).
+- **Expected:** one-line write timeout, quickstart port change, lint/gate/fuzz/contract checks.
+- **Got:** write gets its own 5 s timeout; quickstart moved to port 5300 and re-run exactly as written. T039 ruff/bandit clean (764 lines, no #nosec). T040 gate: 41/41 cases pass. T041: deferred tests fail only on the answer they expect; full 2000-packet fuzz stream via scratch script: all 20 checks answered, server never exited, nothing on stderr. T042: no public names beyond the contract, no unused code. All 42 tasks done. Final report lists every decision made along the way for the reviewer. Verified by hand afterwards: ruff/bandit clean; pytest harness+listener+fuzz gives 41 passed, 11 failed = 9 deferred tests (one parametrised ×3): 8 cases get SERVFAIL instead of the blocklist's NOERROR, 3 lack the big.home.lan zone records; none fail on "server exited" or "no response".
+- **Verdict:** worked
+- **Failure mode:** minor: its summary counts of deferred tests didn't add up (7 + 3); verified by hand: 9 tests / 11 cases, as expected
+- **Fixed by:** –
+- **Commit:**

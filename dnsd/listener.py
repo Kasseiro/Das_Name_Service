@@ -362,6 +362,7 @@ class _TCPRequestHandler(socketserver.BaseRequestHandler):
                              self.server.state, self.server.handler)
             if reply is not None:
                 with contextlib.suppress(OSError):
+                    self.request.settimeout(_TCP_IDLE_TIMEOUT)  # own write timeout, not the read leftover
                     self.request.sendall(struct.pack("!H", len(reply)) + reply)
         except Exception as exc:  # noqa: BLE001 - FR-011: one bad message must not stop the server
             _report(self.client_address, exc)

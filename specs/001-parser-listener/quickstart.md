@@ -56,7 +56,7 @@ fail at its first canary with `wrong answer to a valid query: rcode=SERVFAIL`, n
 Terminal 1:
 
 ```sh
-python -m dnsd --listen 127.0.0.1:5353 --admin 127.0.0.1:8080 \
+python -m dnsd --listen 127.0.0.1:5300 --admin 127.0.0.1:8080 \
     --zone tests/fixtures/zone.txt --blocklist tests/fixtures/blocklist.txt \
     --upstream 1.1.1.1:53
 ```
@@ -65,19 +65,19 @@ Terminal 2 (uses dnspython from `tests/requirements.txt`):
 
 ```sh
 python -c "import dns.message, dns.query; q = dns.message.make_query('Example.COM.', 'A'); \
-r = dns.query.udp(q, '127.0.0.1', port=5353, timeout=2); print(r.id == q.id, r.question, r.flags, r.rcode())"
+r = dns.query.udp(q, '127.0.0.1', port=5300, timeout=2); print(r.id == q.id, r.question, r.flags, r.rcode())"
 python -c "import dns.message, dns.query; q = dns.message.make_query('example.com.', 'A'); \
-print(dns.query.tcp(q, '127.0.0.1', port=5353, timeout=2).rcode())"
+print(dns.query.tcp(q, '127.0.0.1', port=5300, timeout=2).rcode())"
 ```
 
 Expected: `True`, the question with its original case, flags including `QR RD RA`, RCODE 2
 (SERVFAIL) over both UDP and TCP.
 
-Idle TCP connection (FR-006): `python -c "import socket,time; s=socket.create_connection(('127.0.0.1',5353)); t=time.time(); print(s.recv(1), round(time.time()-t))"`
+Idle TCP connection (FR-006): `python -c "import socket,time; s=socket.create_connection(('127.0.0.1',5300)); t=time.time(); print(s.recv(1), round(time.time()-t))"`
 prints `b'' 5`: the server closes it after the 5 s idle timeout, while the queries above still
 answer immediately from another terminal.
 
-Missing flag: `python -m dnsd --listen 127.0.0.1:5353` prints argparse usage and exits with
+Missing flag: `python -m dnsd --listen 127.0.0.1:5300` prints argparse usage and exits with
 status 2 (argparse default; no requirement).
 
 ## 5. Pending
