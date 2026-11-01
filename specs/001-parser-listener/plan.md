@@ -37,10 +37,10 @@ only); `ruff check dnsd`, `bandit -r dnsd`. No new tests; `tests/` is not modifi
 **Project Type**: single-process network service (CLI entry point)
 
 **Performance Goals**: answer a query within 5 s of startup (SC-005); a 1.5 s handler call must not
-delay another client by more than 0.5 s (SC-004); survive 2000 fuzz packets paced at 2 ms (SC-001)
+delay another client by more than 0.5 s (SC-004, design goal DG-1); survive 2000 fuzz packets paced at 2 ms (SC-001)
 
 **Constraints**: UDP responses ≤ 512 bytes (SC-003); TCP responses ≤ 65535 bytes; no lock held
-during network I/O or across stores (FR-028, FR-029); zero ruff/bandit findings (Principle VII)
+during network I/O or across stores (FR-028, design goal DG-2); zero ruff/bandit findings (Principle VII)
 
 **Scale/Scope**: one local host's resolver; tens of concurrent queries at most; ~4 source files
 
@@ -56,7 +56,7 @@ recorded in [research.md](research.md).
 | I. RFC 1035 authoritative | Wire format, compression (4.1.4), TCP framing (4.2.2), header bits (4.1.1) and name text form (5.1) follow RFC 1035; RFC 4343 only for name equality, as contract.md cites it | Pass |
 | II. contract.md binding | Plan cites contract.md sections; no behaviour beyond them. Unspecified points (TCP after first answer, idle timeout, truncation content) are decided in research.md, not added to the contract | Pass |
 | III. Standard library only | Only stdlib modules listed above; no new dependency anywhere | Pass |
-| IV. Requirement → test | Every FR keeps its test list from spec.md; acceptance gate is the 11 stub-compatible tests (spec § Verification status). No tests added or changed | Pass |
+| IV. Requirement → test | Every FR keeps its test list from spec.md; acceptance gate is the 11 stub-compatible tests (spec § Verification status). FR-007/FR-029 have no test yet, so they are non-normative design goals DG-1/DG-2 until the slow-upstream test lands. No tests added or changed | Pass |
 | V. Never crash | Parser bounds-checks every read and never raises on input; listener wraps each message in one `try/except Exception` that prints to stderr; handler errors become SERVFAIL (FR-020); TCP reads have a 5 s deadline | Pass |
 | VI. Secure forwarding | Not in scope (forwarder, 002). Nothing here fixes or exposes upstream IDs/ports | N/A |
 | VII. Clean lint/scan | No `assert`, no `except: pass` (use `contextlib.suppress`), no `random`, no hard-coded bind-all address; checked with `ruff check dnsd` and `bandit -r dnsd` | Pass |
@@ -85,7 +85,7 @@ specs/001-parser-listener/
 │   └── interfaces.md    # Phase 1: binding Python signatures for 002–004
 ├── checklists/
 │   └── requirements.md  # from /speckit-specify
-└── tasks.md             # Phase 2 (/speckit-tasks; not created here)
+└── tasks.md             # Phase 2 (/speckit-tasks)
 ```
 
 ### Source Code (repository root)

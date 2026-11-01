@@ -24,7 +24,7 @@
 
 ## Feature Readiness
 
-- [x] All functional requirements have clear acceptance criteria — FR-007/FR-029 test pending (note 3)
+- [x] All functional requirements have clear acceptance criteria — FR-007/FR-029 moved to design goals until their test exists (note 3)
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification — see note 1
@@ -40,11 +40,12 @@
    Assumptions) records the clarification answer to Q1.
 2. **Clarifications (session 2026-11-01).**
    - Q1 → option B: invalid-flag validation dropped (FR-003, FR-004 removed; FR-002 reduced to
-     parsing). FR-007/FR-029 kept.
+     parsing). FR-007/FR-029 kept (later moved to design goals, note 3).
    - Q2 → option A: accepted when the 11 stub-compatible tests pass; the other 9 are re-checked when
      blocklist (004) and zone (002) merge. Recorded in spec.md § Verification status.
-3. **Open dependency, outside this feature's control.** FR-007 and FR-029 are marked
-   "pending: slow-upstream test (Daniel)". Under Principle IV they count as met only once that test
-   exists and passes. It is not part of this feature's acceptance gate. `tests/` is not modified by
+3. **Open dependency, outside this feature's control.** FR-007 and FR-029 have no test yet
+   (slow-upstream test, Daniel). After `/speckit-analyze` they were moved to the non-normative
+   "Design goals (pending test)" as DG-1/DG-2 (Principle IV). They return as requirements once that
+   test is in `tests/`. It is not part of this feature's acceptance gate. `tests/` is not modified by
    this feature.
 4. All test references in spec.md were checked against `tests/`: every `file::test` named exists.

@@ -198,6 +198,7 @@ def stub_handler(query: Query) -> Outcome: ...
 
 ```python
 from dataclasses import dataclass
+from typing import Any
 
 from dnsd.parser import Message, Name, ResourceRecord
 
@@ -242,17 +243,23 @@ class Invalid:
 @dataclass(frozen=True)
 class ServerState:
     config: Config
-    zone: "ZoneStore"
-    blocklist: "Blocklist"
-    cache: "Cache"
-    stats: "Stats"
-    log: "QueryLog"
+    zone: Any                                 # role: ZoneStore
+    blocklist: Any                            # role: Blocklist
+    cache: Any                                # role: Cache
+    stats: Any                                # role: Stats (dnsd.listener.Stats)
+    log: Any                                  # role: QueryLog
 ```
 
 ### Store operations
 
-Each store class below must provide exactly these methods. The names in quotes above are the
-roles; the classes that fill them are the placeholders in `dnsd.listener` (feature 001) and later
+`ZoneStore`, `Blocklist`, `Cache` and `QueryLog` are **roles, not importable types**. No class
+with those names exists in `dnsd.listener`, and none may be imported from there. The class
+blocks below only list the methods a store filling each role must have. For that reason the
+`ServerState` store fields are annotated `typing.Any`: a string annotation naming a class that
+does not exist would be an undefined name for `ruff` (F821, Principle VII).
+
+Each store class below must provide exactly these methods. The comments on the `ServerState`
+fields above name the roles; the classes that fill them are the placeholders in `dnsd.listener` (feature 001) and later
 `zone.ZoneStore` (002), `cache.Cache` (003), `blocklist.Blocklist` and `querylog.QueryLog` (004).
 `Stats` is final in `dnsd.listener`.
 
@@ -292,7 +299,7 @@ class QueryLog:                               # owner: querylog (004)
     def recent(self, limit: int) -> list[LogEntry]: ...     # newest first; keeps ≥ 1000 newest
 ```
 
-### Concurrency rules (FR-028 – FR-030)
+### Concurrency rules (FR-028, FR-030; rule 2 is design goal DG-2)
 
 1. Each stateful store has one private `threading.Lock`; every public method takes it for its whole
    body and releases it before returning. The operation is atomic and visible to every call that

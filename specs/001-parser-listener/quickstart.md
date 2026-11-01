@@ -82,5 +82,5 @@ status 2 (argparse default; no requirement).
 
 ## 5. Pending
 
-The slow-upstream test for FR-007/FR-029 (SC-004) is to be added by Daniel; it is not part of this
+The slow-upstream test for design goals DG-1/DG-2 (formerly FR-007/FR-029; SC-004) is to be added by Daniel; it is not part of this
 feature's gate.

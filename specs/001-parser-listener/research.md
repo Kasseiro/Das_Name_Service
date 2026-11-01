@@ -11,7 +11,7 @@ spec left to the plan, with rationale and the alternatives rejected.
   `serve_forever` runs in a daemon thread; the UDP server's runs in the main thread. No limit on
   in-flight queries.
 - **Rationale**: stdlib, a few lines, and each handler call runs in its own thread, so a 2 s
-  upstream wait never delays other clients (FR-007, SC-004). With `daemon_threads = True`
+  upstream wait never delays other clients (design goal DG-1, formerly FR-007; SC-004). With `daemon_threads = True`
   `ThreadingMixIn` does not keep a list of threads, so nothing grows over time, and the process
   exits on SIGTERM without joining.
 - **Alternatives**: `asyncio` (the handler contract is a blocking call, so every handler would
@@ -25,7 +25,7 @@ spec left to the plan, with rationale and the alternatives rejected.
   single operation only. Inside the lock a store does only in-memory work: no socket call, no call
   to another store, no callback. Operations return copies or immutable values (FR-030).
   Placeholder stores hold no state and need no lock.
-- **Rationale**: FR-028 (atomic per operation, visible on return) and FR-029 (no lock across I/O or
+- **Rationale**: FR-028 (atomic per operation, visible on return) and design goal DG-2, formerly FR-029 (no lock across I/O or
   stores). One lock per store means no lock ordering and therefore no deadlock.
 - **Alternatives**: one global lock in ServerState (serialises admin API and queries; a forwarder
   bug holding it would stall everything); `RLock` (re-entry is never needed); lock-free reliance

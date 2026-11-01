@@ -1,6 +1,6 @@
 # Feature Specification: Wire Parser and UDP/TCP Listener
 
-**Feature Branch**: `001-parser-listener` (spec directory; no branch hook is configured, so no branch was created)
+**Feature Branch**: `001-parser-listener`
 
 **Created**: 2026-11-01
 
@@ -31,15 +31,19 @@ fixed by `contract.md`; this spec cites its sections and does not restate them (
 ### Session 2026-11-01
 
 - Q1: No test covers invalid-flag rejection (FR-002 to FR-004) or "a slow query must not block
-  other clients" (FR-007, FR-029). Add tests or drop the requirements? → Answer (option B): Drop invalid-flag
-  validation and rejection (FR-003, FR-004 removed; FR-002 reduced to parsing): contract.md leaves
-  it unspecified and argparse's default behaviour is enough. Keep FR-007 and FR-029; their test is
-  pending, to be added to the suite by Daniel (test suite owner). This feature does not modify
-  `tests/`.
+  other clients" (FR-007, FR-029). Add tests or drop the requirements? → Answer (option B):
+  Drop invalid-flag validation and rejection (FR-003, FR-004 removed; FR-002 reduced to parsing):
+  contract.md leaves it unspecified and argparse's default behaviour is enough. Keep FR-007 and
+  FR-029; their test is pending, to be added to the suite by Daniel (test suite owner). This
+  feature does not modify `tests/`.
 - Q2: 9 named tests in `test_listener.py` / `test_fuzz.py` need blocklist or zone answers and cannot
-  pass with the SERVFAIL stub. What is the acceptance gate? → Answer (option A): The feature is accepted when the 11
-  stub-compatible tests pass; the other 9 are re-checked when the blocklist (004) and zone (002)
-  features merge (see Verification status).
+  pass with the SERVFAIL stub. What is the acceptance gate? → Answer (option A): The feature is
+  accepted when the 11 stub-compatible tests pass; the other 9 are re-checked when the blocklist
+  (004) and zone (002) features merge (see Verification status).
+- Analysis follow-up (`/speckit-analyze`, Principle IV): a requirement without a test cannot stay
+  in an accepted spec, so FR-007 and FR-029 were moved to **Design goals (pending test)** below.
+  They become requirements again once Daniel's slow-upstream test is in `tests/`. The threading
+  design in the plan is unchanged.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -150,6 +154,8 @@ waiting for it.
 upstream. The mechanism belongs to the listener even though slow handlers only appear once the
 forwarder exists.
 
+Verified by design goal DG-1; acceptance pending the slow-upstream test.
+
 **Independent Test**: make the upstream delay its reply by 1.5 s, send a query that is forwarded,
 and while it is outstanding send a query that is answered locally; the second must be answered
 well before the first.
@@ -212,8 +218,9 @@ operation or concurrency rule that this spec does not define, and none that cont
   closed when the idle timeout expires; other clients are unaffected.
 - **TCP client closes before the reply is written**: the write failure is ignored; the query is
   still counted (FR-031), because it was answered.
-- **Handler raises an unexpected error or returns something that is not an Outcome**: the listener
-  answers SERVFAIL (FR-020) and keeps serving.
+- **Handler raises an unexpected error, returns something that is not an Outcome, or returns an
+  Outcome that cannot be finalised or encoded**: the listener answers SERVFAIL (FR-020) and keeps
+  serving.
 - **Response that does not fit in 65535 bytes over TCP** (possible only when an upstream reply that
   used compression grows when re-encoded): the listener answers SERVFAIL instead (FR-017).
 - **Many slow queries at once**: each is handled independently; any limit on in-flight queries is a
@@ -236,89 +243,97 @@ stub handler (FR-019) is installed. Every test outside `test_listener.py`, `test
 - **FR-001**: The server MUST start as `python -m dnsd` and accept the five flags `--listen`,
   `--admin`, `--zone`, `--blocklist` and `--upstream` in the form of contract.md § Command line.
   *Tests*: `tests/test_harness.py::test_server_starts_with_documented_flags`
-- **FR-002**: `--listen`, `--admin` and `--upstream` MUST be split into an address and a port at the
-  last `:`, and `--zone` and `--blocklist` kept as paths, giving the Config entity. This feature only
-  parses these values; the admin API, zone, blocklist and forwarder features use them. A missing,
-  unknown or malformed flag is not a requirement: contract.md leaves it unspecified, and the
-  argument parser's default behaviour applies (see Clarifications).
+- **FR-002**: `--listen`, `--admin` and `--upstream` MUST be split into an address and a port at
+  the last `:`, and `--zone` and `--blocklist` kept as paths, giving the Config entity. This
+  feature only parses these values; the admin API, zone, blocklist and forwarder features use them.
+  A missing, unknown or malformed flag is not a requirement: contract.md leaves it unspecified, and
+  the argument parser's default behaviour applies (see Clarifications).
   *Tests*: `tests/test_harness.py::test_server_starts_with_documented_flags`
 - **FR-003**: *Removed in clarification (Q1): validation and rejection of invalid flag values.*
-- **FR-004**: *Removed in clarification (Q1): required exit behaviour when a socket cannot be bound.*
+- **FR-004**: *Removed in clarification (Q1): required exit behaviour when a socket cannot be
+  bound.*
 
 #### Transport (contract.md § Command line, § TCP)
 
-- **FR-005**: The server MUST receive queries on UDP and on TCP at the `--listen` address, and MUST
-  start answering only after all startup loading (zone file, blocklist file) is complete.
+- **FR-005**: The server MUST listen as contract.md § Command line prescribes. This spec adds: it
+  starts answering only after all startup loading (zone file, blocklist file) is complete.
   *Tests*: `tests/test_harness.py::test_server_starts_with_documented_flags`,
   `tests/test_listener.py::test_tcp_query_with_length_prefix` †
-- **FR-006**: Over TCP every message MUST be read and written with a two-byte big-endian length
-  prefix (RFC 1035 4.2.2). The server answers the first query on a connection and then closes it.
-  A connection that has not delivered a complete message within an idle timeout (a few seconds;
-  value chosen in the plan) is closed.
+- **FR-006**: TCP framing MUST follow contract.md § TCP (RFC 1035 4.2.2). This spec adds, where
+  contract.md leaves it unspecified: the server closes the connection after answering the first
+  query, and closes a connection that has not delivered a complete message within an idle timeout
+  (a few seconds; value chosen in the plan).
   *Tests*: `tests/test_listener.py::test_tcp_query_with_length_prefix` †,
   `tests/test_listener.py::test_tcp_formerr`, `tests/test_listener.py::test_tcp_notimp`
-- **FR-007**: The handling of one query, including a handler call that takes up to the contract's
-  2-second upstream budget, MUST NOT delay the receiving or answering of other queries over UDP or
-  TCP, from the same or other clients. A stalled TCP connection MUST NOT delay other clients.
-  *Tests*: pending: slow-upstream test (Daniel). No test in `tests/` covers this yet; Daniel, as
-  test suite owner, adds it (see Clarifications). This feature does not modify `tests/`.
+- **FR-007**: *Moved to Design goals (pending test), DG-1: no test in `tests/` covers it yet.*
 
 #### Query intake (contract.md § Responses › Malformed and unusual queries)
 
-- **FR-008**: Each received message MUST be classified in this order, and the first matching rule
-  applies:
-  1. fewer than 12 bytes → no reply (TCP: close the connection);
-  2. QR=1 → no reply (TCP: close the connection);
-  3. opcode ≠ 0 → bare NOTIMP reply (FR-010);
-  4. QDCOUNT ≠ 1 → bare FORMERR reply;
-  5. the question cannot be parsed (FR-021 limits) → bare FORMERR reply;
-  6. otherwise → valid query, passed to the resolution handler (FR-018).
+- **FR-008**: Each received message MUST get the reaction contract.md § Responses › Malformed and
+  unusual queries gives its input class (over TCP, "no reply" closes the connection: contract.md
+  § TCP). contract.md does not order the classes; the spec does. They are checked in this order,
+  and the first match applies:
+  1. fewer than 12 bytes;
+  2. QR=1;
+  3. opcode ≠ 0;
+  4. QDCOUNT ≠ 1;
+  5. the question cannot be parsed (limits of FR-021);
+  6. otherwise: valid query, passed to the resolution handler (FR-018).
   *Tests*: `tests/test_listener.py::test_no_reply_to_packets_shorter_than_a_header` †,
   `tests/test_listener.py::test_no_reply_to_packets_with_qr_set` †,
   `tests/test_listener.py::test_tcp_closes_connection_where_udp_gives_no_reply` †,
   `tests/test_listener.py::test_notimp_for_other_opcodes`,
   `tests/test_listener.py::test_formerr`, `tests/test_listener.py::test_tcp_formerr`,
   `tests/test_listener.py::test_tcp_notimp`
-- **FR-009**: For a valid query, only the header and the single question MUST be read. Answer,
-  authority and additional records in a query, including an OPT record, and any bytes after the
-  question MUST be ignored and MUST NOT cause FORMERR.
+- **FR-009**: Records after the question in a query MUST be treated as contract.md § Responses ›
+  Malformed and unusual queries prescribes. This spec adds: for a valid query only the header and
+  the single question are read, and bytes after the question (unspecified by contract.md) are
+  likewise ignored and never cause FORMERR.
   *Tests*: `tests/test_listener.py::test_query_with_opt_record_is_answered_without_one` †,
   `tests/test_listener.py::test_edns_does_not_raise_udp_limit` †
-- **FR-010**: A FORMERR or NOTIMP reply MUST be exactly 12 bytes: the query's ID, QR=1, the query's
-  opcode and RD bit (RFC 1035 4.1.1), AA=0, TC=0, RA=1, Z=0, the RCODE, and all four counts zero.
+- **FR-010**: A FORMERR or NOTIMP reply MUST have the form given in contract.md § Responses ›
+  Malformed and unusual queries. The header bits that section does not fix are: the query's opcode
+  and RD bit (RFC 1035 4.1.1), AA=0, TC=0 and Z=0.
   *Tests*: `tests/test_listener.py::test_formerr`,
-  `tests/test_listener.py::test_notimp_for_other_opcodes`, `tests/test_listener.py::test_tcp_formerr`,
-  `tests/test_listener.py::test_tcp_notimp`
-- **FR-011**: No input received on the DNS port MUST crash, hang or stop the server, and an error
-  while handling one message MUST NOT affect the handling of others (Principle V).
+  `tests/test_listener.py::test_notimp_for_other_opcodes`,
+  `tests/test_listener.py::test_tcp_formerr`, `tests/test_listener.py::test_tcp_notimp`
+- **FR-011**: Input on the DNS port MUST be survived as contract.md § Responses and constitution
+  Principle V prescribe. This spec adds: no input hangs or stops the server, and an error while
+  handling one message does not affect the handling of others.
   *Tests*: `tests/test_fuzz.py::test_server_survives_fuzzing` †,
   `tests/test_listener.py::test_no_reply_to_packets_shorter_than_a_header` †
 
 #### Response finalisation (contract.md § Responses)
 
-- **FR-012**: Every response to a valid query MUST carry the query's ID.
+- **FR-012**: Every response to a valid query MUST carry the ID as contract.md § Responses
+  prescribes. This spec adds: the listener sets it, whatever the handler set.
   *Tests*: `tests/test_listener.py::test_response_echoes_id`
-- **FR-013**: Every response to a valid query MUST carry exactly the query's question: same name
-  labels with their letter case, same type, same class.
+- **FR-013**: Every response to a valid query MUST carry the question section as contract.md
+  § Responses prescribes. This spec adds: the listener sets it from the decoded query, whatever the
+  handler set.
   *Tests*: `tests/test_listener.py::test_response_echoes_question`,
   `tests/test_listener.py::test_response_preserves_case_of_question_name`
-- **FR-014**: Every response MUST have QR=1 and RA=1, opcode 0 and the query's RD bit, whatever the
-  handler set.
+- **FR-014**: Every response to a valid query MUST have the QR and RA bits contract.md § Responses
+  prescribes. This spec adds: opcode 0 and the query's RD bit, whatever the handler set.
   *Tests*: `tests/test_listener.py::test_qr_set_on_every_response`,
   `tests/test_listener.py::test_ra_set_on_every_response`
-- **FR-015**: No response MUST carry an OPT record: the listener removes any record of type OPT (41)
-  from the handler's response before encoding.
+- **FR-015**: Responses MUST carry no OPT record (contract.md § Responses › Malformed and unusual
+  queries). This spec adds: the listener removes any record of type OPT (41) from the handler's
+  response before encoding.
   *Tests*: `tests/test_listener.py::test_query_with_opt_record_is_answered_without_one` †
-- **FR-016**: Over UDP, a response whose encoding exceeds 512 bytes MUST be replaced by its header
-  (same ID, flags and RCODE, TC=1) and question, with answer, authority and additional sections
-  empty and their counts zero. The handler's TC bit is ignored; the listener alone sets TC.
+- **FR-016**: Over UDP, responses MUST be truncated as contract.md § Truncation prescribes. This
+  spec adds: the truncated reply is the response's header (same ID, flags and RCODE) and question,
+  with answer, authority and additional sections empty and their counts zero; the handler's TC bit
+  is ignored, and the listener alone sets TC.
   *Tests*: `tests/test_listener.py::test_udp_response_over_512_bytes_is_truncated` †,
-  `tests/test_listener.py::test_truncated_response_keeps_question_and_whole_records` †,
+  `tests/test_listener.py::test_truncated_response_keeps_question_and_whole_records` (gate test;
+  full check with 002),
   `tests/test_listener.py::test_edns_does_not_raise_udp_limit` †,
   `tests/test_forwarder.py::test_client_udp_reply_never_exceeds_512_bytes` †,
   `tests/test_forwarder.py::test_answer_fetched_over_tcp_is_truncated_for_a_udp_client` †
-- **FR-017**: Over TCP, TC MUST never be set and the full response MUST be sent. If the encoding
-  exceeds 65535 bytes, the listener MUST send a SERVFAIL response (FR-020 form) instead.
+- **FR-017**: Over TCP, the TC bit MUST follow contract.md § Truncation and § TCP. This spec adds:
+  the full response is sent, and if its encoding exceeds 65535 bytes, the listener sends a
+  SERVFAIL response (FR-020 form) instead.
   *Tests*: `tests/test_listener.py::test_truncated_answer_is_complete_over_tcp` †
 
 #### Resolution handler (see **Inter-module interfaces › Resolution handler**)
@@ -333,10 +348,10 @@ stub handler (FR-019) is installed. Every test outside `test_listener.py`, `test
   sections, result `error` and `upstream_asked` false. The stub is replaced, not extended, by the
   real handler of the zone + forwarder feature.
   *Tests*: `tests/test_harness.py::test_server_starts_with_documented_flags`
-- **FR-020**: If the handler raises an error or returns something other than an Outcome, the
-  listener MUST answer SERVFAIL (query ID and question, QR=1, RA=1, empty sections), record the
-  query as result `error` with `upstream_asked` false, report the error on standard error, and keep
-  serving.
+- **FR-020**: If the handler raises an error, returns something other than an Outcome, or returns
+  an Outcome that cannot be finalised or encoded, the listener MUST answer SERVFAIL (query ID and
+  question, QR=1, RA=1, empty sections), record the query as result `error` with `upstream_asked`
+  false, report the error on standard error, and keep serving.
   *Tests*: `tests/test_fuzz.py::test_server_survives_fuzzing` †
 
 #### Message model (see **Inter-module interfaces › Message model**)
@@ -344,7 +359,8 @@ stub handler (FR-019) is installed. Every test outside `test_listener.py`, `test
 - **FR-021**: The parser MUST decode names with RFC 1035 4.1.4 compression and MUST reject, without
   reading out of bounds: a label over 63 bytes, a name over 255 bytes, a reserved label type, a
   pointer outside the message, a pointer loop, and a name that runs past the end of the message.
-  *Tests*: `tests/test_listener.py::test_formerr`, `tests/test_fuzz.py::test_server_survives_fuzzing` †
+  *Tests*: `tests/test_listener.py::test_formerr`,
+  `tests/test_fuzz.py::test_server_survives_fuzzing` †
 - **FR-022**: The parser MUST decode a complete message — header, questions, answer, authority and
   additional records — and encode a Message back to wire format, with every length and offset
   checked before it is read. A record whose RDLENGTH runs past the end of the message, or whose
@@ -382,39 +398,50 @@ stub handler (FR-019) is installed. Every test outside `test_listener.py`, `test
 - **FR-027**: At startup the entry point MUST create exactly one ServerState and give the same
   instance to the listener, the resolution handler and the admin API. No module keeps a second copy
   of any store.
-  *Tests*: `tests/test_admin_api.py::test_post_blocklist_takes_effect_immediately`,
-  `tests/test_admin_api.py::test_posted_record_resolves`
+  *Tests*: `tests/test_admin_api.py::test_post_blocklist_takes_effect_immediately` †,
+  `tests/test_admin_api.py::test_posted_record_resolves` †
 - **FR-028**: Every store operation MUST be atomic with respect to every other operation on the same
   store, from any number of concurrent queries and admin API requests: a reader sees the state
   before or after a change, never part of it, and a change is visible to every operation that
   starts after it returns (contract.md § Admin API: "changes take effect immediately").
-  *Tests*: `tests/test_admin_api.py::test_post_blocklist_takes_effect_immediately`,
-  `tests/test_admin_api.py::test_delete_blocklist_unblocks_immediately`,
-  `tests/test_admin_api.py::test_posted_record_resolves`,
-  `tests/test_cache.py::test_blocking_a_cached_name_takes_effect_immediately`,
-  `tests/test_cache.py::test_local_record_for_a_cached_name_takes_effect_immediately`
-- **FR-029**: No store operation may wait on network I/O or call into another store, so a handler
-  waiting on the upstream never holds up an admin API request or another query.
-  *Tests*: pending: slow-upstream test (Daniel), as FR-007.
+  *Tests*: `tests/test_admin_api.py::test_post_blocklist_takes_effect_immediately` †,
+  `tests/test_admin_api.py::test_delete_blocklist_unblocks_immediately` †,
+  `tests/test_admin_api.py::test_posted_record_resolves` †,
+  `tests/test_cache.py::test_blocking_a_cached_name_takes_effect_immediately` †,
+  `tests/test_cache.py::test_local_record_for_a_cached_name_takes_effect_immediately` †
+- **FR-029**: *Moved to Design goals (pending test), DG-2: no test in `tests/` covers it yet.*
 - **FR-030**: Store operations MUST return copies or immutable values; no caller can change a store
   except through its operations (Principle IX).
-  *Tests*: `tests/test_admin_api.py::test_get_records_lists_zone_file_records`,
-  `tests/test_admin_api.py::test_get_blocklist_lists_file_entries`
+  *Tests*: `tests/test_admin_api.py::test_get_records_lists_zone_file_records` †,
+  `tests/test_admin_api.py::test_get_blocklist_lists_file_entries` †
 
 #### Accounting (contract.md § Admin API › /stats, › /log)
 
-- **FR-031**: For every valid query whose Outcome the listener receives (or replaces under FR-020),
-  the listener MUST — and nothing else may — increment `queries`, increment `blocked` if the result
-  is `blocked`, `cache_hits` if it is `cached` and `cache_misses` if `upstream_asked` is true, and
-  append one log entry with the query's arrival time, the client's IP address, the question name
-  and type, and the result. Input that got no reply, FORMERR or NOTIMP MUST change no counter and
-  add no log entry.
+- **FR-031**: The counters of contract.md § Admin API › /stats and the entries of § /log MUST be
+  produced by the listener alone; no other module may change them. The listener accounts once for
+  every valid query whose Outcome it receives (or replaces under FR-017 or FR-020), and maps the
+  Outcome onto the counters as follows: `blocked` counts result `blocked`, `cache_hits` counts
+  result `cached`, and `cache_misses` counts `upstream_asked` true. Each log entry takes its
+  `result` from the Outcome and its `time` from the moment the query was received.
   *Tests*: `tests/test_admin_api.py::test_stats_queries_counts_udp_and_tcp` †,
   `tests/test_admin_api.py::test_stats_queries_ignores_uncounted_input` †,
   `tests/test_admin_api.py::test_log_ignores_uncounted_input` †,
   `tests/test_admin_api.py::test_log_entry_fields` †,
   `tests/test_admin_api.py::test_stats_blocked_counts_blocking_responses` †,
   `tests/test_cache.py::test_stats_count_misses_and_hits` †
+
+### Design goals (pending test) *(non-normative)*
+
+The goals below are not requirements yet, because no test in `tests/` verifies them
+(Principle IV). Each becomes a requirement again under its old number once Daniel's slow-upstream
+test is in `tests/`. The plan's threading and locking design (research R-1, R-2) still targets
+them, and tasks T037/T038 check them by hand.
+
+- **DG-1** (was FR-007): handling one query, including a handler call that takes up to the
+  contract's 2-second upstream budget, does not delay receiving or answering other queries over
+  UDP or TCP, from the same client or other clients. A stalled TCP connection does not delay other
+  clients. Measured by SC-004.
+- **DG-2** (was FR-029): no store operation waits on network I/O or calls into another store.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -442,9 +469,9 @@ changing either is an amendment of this spec.
   (RFC 4343). Operations: equality, `parent()` (first label removed), `is_subdomain_of(other)`
   (whole-label suffix match, a name being a subdomain of itself), `to_text()` / `from_text()`
   (FR-026).
-- **Header**: `id` (0–65535), `qr`, `aa`, `tc`, `rd`, `ra` (booleans), `opcode` (0–15),
-  `z` (0–7), `rcode` (0–15). Section counts are not stored; they are taken from the section
-  lengths when encoding.
+- **Header**: `id` (0–65535), `qr` (boolean), `opcode` (0–15), `aa`, `tc`, `rd`, `ra`
+  (booleans), `z` (0–7), `rcode` (0–15), in that order. Section counts are not stored; they are
+  taken from the section lengths when encoding.
 - **Question**: `name` (Name), `qtype` (0–65535), `qclass` (0–65535).
 - **ResourceRecord**: `name` (Name), `rtype`, `rclass` (0–65535), `ttl` (0–4294967295), `rdata`.
   `rdata` is one of: `A(address)`, `AAAA(address)`, `CNAME(target)`, `NS(host)`, `PTR(target)`,
@@ -473,8 +500,8 @@ changing either is an amendment of this spec.
 - **Contract**: `handle(query) → Outcome`, a blocking call. It is called concurrently for different
   queries and may take up to the contract's 2-second upstream budget. The handler sets the
   response's RCODE, AA and the three record sections. The listener owns ID, question, QR, RA,
-  opcode, RD, TC, OPT removal, truncation, transport, counters and log (FR-012 to FR-017, FR-031);
-  whatever the handler puts there is overwritten.
+  opcode, RD, TC, Z, OPT removal, truncation, transport, counters and log (FR-012 to FR-017,
+  FR-031); whatever the handler puts there is overwritten.
 - **Installation**: exactly one handler, built at startup from the ServerState; the zone + forwarder
   feature provides the real one, which consults ZoneStore, Blocklist and Cache in the order of
   contract.md § Responses.
@@ -482,10 +509,13 @@ changing either is an amendment of this spec.
 #### Shared state (module: listener holds the container; each store belongs to its module)
 
 `ServerState` holds `config` (Config) and one instance of each store below. Operations follow
-FR-028 to FR-030. Names given to operations are Name values; the admin API converts text with
-`Name.from_text` and the record helpers below. The ZoneStore result types (`Answer`, `NoData`,
-`NXDomain`, `NotLocal`, `Invalid`) and `LogEntry` are defined in `dnsd/listener.py`, next to
-ServerState, and features 002–004 import them from there.
+FR-028 and FR-030, and design goal DG-2. contracts/interfaces.md keeps its concurrency rule 2 (no
+I/O, no call to another store and no callback while a store holds its lock) as a binding design
+constraint for features 002–004, independent of DG-2's normative status. Names given to
+operations are Name values; the admin API converts text with `Name.from_text` and the record
+helpers below. The ZoneStore result types (`Answer`, `NoData`, `NXDomain`, `NotLocal`, `Invalid`)
+and `LogEntry` are defined in `dnsd/listener.py`, next to ServerState, and features 002–004 import
+them from there.
 
 | Store | Owner module | Operations | Used by |
 |---|---|---|---|
@@ -536,9 +566,10 @@ they verify count as met only from then on (Principle IV).
 | `tests/test_listener.py::test_truncated_answer_is_complete_over_tcp` | zone (002) | needs the 40-record answer for `big.home.lan.` |
 | `tests/test_listener.py::test_edns_does_not_raise_udp_limit` | zone (002) | needs the 40-record answer for `big.home.lan.` |
 
-**Pending (not yet in `tests/`):** the slow-upstream test for FR-007 and FR-029, to be added by
-Daniel as test suite owner. It is not part of this feature's acceptance gate, and this feature does
-not modify `tests/`.
+**Pending (not yet in `tests/`):** the slow-upstream test for design goals DG-1 and DG-2 (formerly
+FR-007 and FR-029), to be added by Daniel as test suite owner. When it lands, DG-1 and DG-2 return
+as FR-007 and FR-029. It is not part of this feature's acceptance gate, and this feature does not
+modify `tests/`.
 
 Tests named in FR lists that belong to other suites (`test_admin_api.py`, `test_forwarder.py`,
 `test_cache.py`) are checked when their own features merge.
@@ -553,7 +584,8 @@ Tests named in FR lists that belong to other suites (`test_admin_api.py`, `test_
   included), QR=1 and RA=1, over both UDP and TCP.
 - **SC-003**: 0 UDP replies exceed 512 bytes; every truncated reply parses as a complete message.
 - **SC-004**: While one query is waiting 1.5 s on the upstream, a query from another client that
-  needs no upstream is answered within 0.5 s.
+  needs no upstream is answered within 0.5 s (design goal DG-1; checked by hand until the
+  slow-upstream test exists).
 - **SC-005**: Started with valid flags, the server answers its first query within 5 seconds.
 - **SC-006**: The zone + forwarder, cache and blocklist + admin API specs reference the message
   model, resolution handler and shared state of this spec and define none of them again

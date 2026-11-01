@@ -177,3 +177,127 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-007 ★
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** cross-check spec, plan, tasks and contracts against each other and the constitution before any code is written.
+- **Expected:** a few consistency findings.
+- **Got:** 16 findings, 2 critical. Real defects found before implementation: FR-007/FR-029 kept without a test, violating Principle IV (C1); spec restating contract.md (C2); FR-014 contradicting FR-010 on opcode (K1); string annotations in the contract that would fail ruff F821 and break CI (L1); T024 requiring tests that can only pass after US2 (O1); the fuzz test stopping at packet 100 with the stub, so only 5% of the stream reaches the server (G1); handler output that fails to encode producing no reply instead of SERVFAIL (U1); a task ordering that would count a query twice (O2); a task telling the AI to write its own prompt-log entry (W1). Read-only, no files changed.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-008
+- **Commit:** 
+
+### S-008
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-007
+- **Prompt:**
+  ```
+  Apply these fixes, then stop:
+
+  C1: Move FR-007 and FR-029's store-concurrency clause into a non-normative "Design goals (pending test)" note: they become requirements again once Daniel's slow-upstream test is in tests/. The plan's threading design stays. Keep T037/T038 as manual checks.
+  C2: Replace restated contract.md text in FR-008 rules 1–5, FR-010 and FR-031 with citations; keep only what the spec adds (rule order, header bits, listener-only ownership).
+  K1: FR-014 applies to responses to valid queries.
+  O1: In T024, run only the non-error cases of the qr/ra tests; the full tests go in T029.
+  L1: In contracts/interfaces.md, state that ZoneStore, Blocklist, Cache and QueryLog are roles, not importable types; annotate the ServerState fields with typing.Any. Update T015.
+  G1: Add to T041 a scratch run that sends the full seeded fuzz stream and checks only that the process is still running and answers a valid query. No stub changes.
+  U1: Extend T027: an exception while finalising or encoding the handler's Outcome also falls back to the FR-020 SERVFAIL.
+  W1: Remove T043.
+  O2: In T034, move the _account call after the size check so a query is counted once.
+  Also fix the low and medium items: I1, I2, D1, S1, S2 (recount milestones), S3.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve all S-007 findings in one pass. For C1, demote rather than keep "pending" requirements (Principle IV); for G1, a scratch survival run instead of a stub faking 0.0.0.0, which would game the shared test suite.
+- **Expected:** targeted edits in spec.md, contracts/interfaces.md and tasks.md.
+- **Got:** all fixes applied across spec, contract, plan, research, quickstart, checklist and tasks. FR-007/FR-029 became non-normative DG-1/DG-2; ServerState fields annotated Any with role comments; T043 removed. It verified with pytest --collect-only that the -k filter selects the 8 normal QR/RA cases. tests/ untouched.
+- **Verdict:** worked
+- **Failure mode:** – (C2's scope was too narrow; caught in S-009)
+- **Fixed by:** –
+- **Commit:** 
+
+### S-009
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-007
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** confirm the S-008 fixes and catch anything they introduced.
+- **Expected:** clean report.
+- **Got:** all earlier findings resolved except G2 (documented deferral). 8 new findings, 1 critical: FR-006, FR-009 and FR-012–FR-015 still restated contract.md (C3); the first run had scoped C2 too narrowly. Also a gate test wrongly marked † (I3), the contract's concurrency rule binding while DG-2 is non-normative (I4), US5 still reading as a normal story (I5), a T027 fallback with no requirement behind it (U2), and a type error in T034's pseudo-code (O3).
+- **Verdict:** partly
+- **Failure mode:** inconsistent scope between runs: the first analyze missed restatements of the same kind it flagged in C2.
+- **Fixed by:** S-010
+- **Commit:** 
+
+### S-010
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-009
+- **Prompt:**
+  ```
+  Apply these fixes, then stop:
+
+  C3: Same pattern as C2 for FR-006, FR-009 and FR-012–FR-015: cite contract.md and keep only what this spec adds (FR-014: opcode 0 and the query's RD bit, whatever the handler set; FR-015: the listener removes OPT records from the handler's response). Test lists unchanged.
+  I3: Drop the † on test_truncated_response_keeps_question_and_whole_records under FR-016 and add "gate test; full check with 002".
+  I4: In the spec, state that contracts/interfaces.md keeps concurrency rule 2 as a binding design constraint for 002–004, independent of DG-2's normative status.
+  I5: Add to US5: "Verified by design goal DG-1; acceptance pending the slow-upstream test."
+  U2: Extend FR-020 with "or returns an Outcome that cannot be finalised or encoded".
+  O3: In T034 use _finalise(query.message, ...).
+  S4: Rewrap to 100 characters.
+  G2 stays as documented deferral.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve S-009's findings.
+- **Expected:** targeted edits in spec.md and tasks.md.
+- **Got:** all applied; FRs now cite contract.md and say "This spec adds: …". Rewrapped lines its own earlier edits had merged past 100 characters. It removed a tests/__pycache__/ directory its own --collect-only check had created. Left a stale "no branch was created" metadata line.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-012 (Feature Branch line)
+- **Commit:** 
+
+### S-011
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-009
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** confirmation run after S-010, which rewrote many FRs. Stopping rule set beforehand: fix CRITICAL/HIGH once and then implement, without a fourth run.
+- **Expected:** clean report.
+- **Got:** S-010 fixes all held. One critical (C4): FR-005, FR-011, FR-016 and FR-017 still restated contract.md, the same finding as C2 and C3 for the third time. Only this run swept every FR. Also 3 low items: a broken Feature Branch line from a manual edit, a bad rewrap, and an edge case not matching the extended FR-020.
+- **Verdict:** partly
+- **Failure mode:** analyze found the same defect class across three runs because each run checked only part of the spec instead of sweeping it fully.
+- **Fixed by:** S-012
+- **Commit:** 
+
+### S-012
+- **Module:** parser, listener
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-01
+- **Refines:** S-011
+- **Prompt:**
+  ```
+  Apply C4 as you recommended (FR-005, FR-011, FR-016, FR-017: cite, then "This spec adds", test lists unchanged), plus S5 (make the line **Feature Branch**: `001-parser-listener`), S6 and U3. Then stop. Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve S-011; per the stopping rule no further analyze run follows.
+- **Expected:** four spec-only edits.
+- **Got:** all four applied in spec.md only: FR-005, FR-011, FR-016 and FR-017 now cite contract.md and say "This spec adds"; Feature Branch line fixed; Shared state paragraph reflowed; handler-failure edge case extended to match FR-020. It checked that no line exceeds 100 characters. tests/ untouched.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
