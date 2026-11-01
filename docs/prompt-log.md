@@ -568,3 +568,45 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-027
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** cross-check the 002 artifacts before implementation.
+- **Expected:** a few findings.
+- **Got:** 1 critical, 1 medium, 7 low. C1 (Principle IV): three FRs had clauses no named test could check (FR-003 "never written", FR-016's random ID on the TCP retry, FR-025's no-accounting/no-lock rules), the same pattern as in 001. W1: /speckit-clarify was never run; Q1 was settled during specify. Lows: stale "plan picks" wording (I1), QR=1 check missing from the assumptions (I2), trailing-# rule only in edge cases (I3), duplicated "not forwarded" clause (D1), tests that pass trivially under the temporary SERVFAIL (U1), unused 001 placeholders (U2), a vague bandit fallback (U3). Read-only.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-028
+- **Commit:** 
+
+### S-028
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-027
+- **Prompt:**
+  ```
+  Apply these, then stop:
+  C1: as you recommend. FR-003: drop "neither is ever written" (contract.md § Command line says it). FR-016: keep the TCP-retry ID rule, marked as checked by review (T022), not by a test. FR-025: name tests/test_admin_api.py::test_stats_queries_counts_udp_and_tcp † for the Stats/log part; move "no lock while calling a store or the network" into a binding design constraint citing 001 interfaces.md rule 4, as 001 did for rule 2.
+  I1: state R-3's decision in the Assumptions and the edge case.
+  I2: add QR=1 to the Assumption on stricter reply checks.
+  I3: add the trailing-# rule to FR-002.
+  U1: add the three trivially-passing blocklist tests to T021's command.
+  U2: add to T031 that stub_handler and the two placeholders stay in listener.py on purpose (R-9).
+  U3: spell out the bind fallback in T027 as you describe.
+  Skip D1. Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve C1 the way 001 did, and take the cheap low items that make implementation smoother. W1 is accepted: as in 001, clarification happened inside the specify step (Q1, recorded in § Clarifications), so /speckit-clarify was skipped. No second analyze run: the only critical finding was narrow.
+- **Expected:** spec and task edits only.
+- **Got:** all applied in spec.md and tasks.md only. FR-003 trimmed; FR-016 notes the TCP-retry ID is checked by review (T022); FR-025 names test_stats_queries_counts_udp_and_tcp (double counting would fail it); new "Design constraints (binding; no test)" section with DC-1 (no lock while calling a store or the network, citing 001 rule 4). R-3's decision, QR=1 and the trailing-# rule stated in the spec. T021 re-runs the three trivially-passing tests, T031 documents the unused 001 placeholders, T027 spells out the bind fallback. It also pointed T026's review at DC-1 unasked, to keep the references consistent.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

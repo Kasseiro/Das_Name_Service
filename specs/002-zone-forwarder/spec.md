@@ -256,7 +256,8 @@ without changes to the zone, blocklist or forwarder modules or the handler.
 - **Duplicate blocklist entries**, including the same domain in different case or with and
   without a trailing dot: listed once (the same rule as `add`).
 - **Blocklist entry that is not a valid name** (label over 63 bytes, empty label): not specified
-  by contract.md; a plan decision, like a malformed zone line.
+  by contract.md; like a malformed zone line, the server reports it on standard error and exits
+  with status 1 before serving (research R-3).
 - **Blocklist entry for the root or a top-level name** (e.g. `test`): matched like any other entry
   by whole labels; `test` would block every name under `test.`.
 - **Blocked name that is also a local zone name or under a local suffix**: the local zone answers
@@ -310,8 +311,9 @@ See **Verification status**.
   `tests/test_admin_api.py::test_get_records_lists_zone_file_records` †
 - **FR-002**: At startup the server MUST read the file named by `--blocklist` once, in the format
   of contract.md § Blocklist file, and load every entry into the Blocklist store: comment lines
-  (first non-blank character `#`) and blank lines are skipped, and entries are accepted with or
-  without a trailing dot and in any case.
+  (first non-blank character `#`) and blank lines are skipped, a trailing `# …` after an entry is
+  also a comment (research R-2), and entries are accepted with or without a trailing dot and in
+  any case.
   *Tests*: `tests/test_blocklist.py::test_blocked_a`,
   `tests/test_blocklist.py::test_comment_lines_are_ignored`,
   `tests/test_blocklist.py::test_entry_with_trailing_dot_blocks`,
@@ -319,7 +321,7 @@ See **Verification status**.
   `tests/test_blocklist.py::test_file_yields_exactly_its_entries` †,
   `tests/test_admin_api.py::test_get_blocklist_lists_file_entries` †
 - **FR-003**: Both files MUST be loaded completely before the listener starts answering
-  (001 FR-005), and neither is ever written (contract.md § Command line).
+  (001 FR-005).
   *Tests*: `tests/test_harness.py::test_server_starts_with_documented_flags`,
   `tests/test_listener.py::test_tcp_query_with_length_prefix`
 
@@ -438,7 +440,8 @@ See **Verification status**.
   RFC 5452). Neither is fixed, sequential, reused deliberately or copied from the client, and
   neither is configurable.
   *Tests*: `tests/test_forwarder.py::test_upstream_query_ids_are_random`,
-  `tests/test_forwarder.py::test_upstream_source_ports_are_random`
+  `tests/test_forwarder.py::test_upstream_source_ports_are_random`. These tests see only UDP
+  queries; the rule for the TCP-retry ID is checked by review (tasks T022), not by a test.
 - **FR-017**: An upstream reply MUST count only if it decodes as a message and its ID matches the
   ID of the query sent; any other datagram is ignored and the server keeps waiting (Principle VI).
   *Tests*: `tests/test_forwarder.py::test_reply_with_wrong_id_is_ignored`
@@ -520,11 +523,20 @@ See **Verification status**.
   `tests/test_cache.py::test_stats_count_misses_and_hits` ‡†,
   `tests/test_cache.py::test_cache_hit_is_logged_as_cached` ‡†
 - **FR-025**: The handler MUST set only the parts of the response it owns (001 interfaces.md § 2:
-  RCODE, AA and the three record sections), MUST NOT call `Stats.record` or `QueryLog.append`, and
-  MUST hold no lock while calling a store or the network (001 interfaces.md § 3, rule 4).
+  RCODE, AA and the three record sections) and MUST NOT call `Stats.record` or `QueryLog.append`.
   *Tests*: `tests/test_listener.py::test_response_echoes_id`,
   `tests/test_listener.py::test_ra_set_on_every_response`,
-  `tests/test_forwarder.py::test_response_carries_the_clients_id_and_question`
+  `tests/test_forwarder.py::test_response_carries_the_clients_id_and_question`,
+  `tests/test_admin_api.py::test_stats_queries_counts_udp_and_tcp` † (a handler that also counted
+  would make each query count twice)
+
+### Design constraints *(binding; no test)*
+
+- **DC-1**: The handler holds no lock while calling a store or the network. This is
+  001 contracts/interfaces.md § 3, concurrency rule 4, kept as a binding design constraint for this
+  feature in the same way 001 keeps rule 2 (001 spec § Shared state). No test in `tests/` can
+  observe it, so it is not a functional requirement (Principle IV); it is checked in review
+  (tasks T026).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -652,8 +664,9 @@ query log and `/stats` as well as the cache.
 - The zone and blocklist files are well-formed as contract.md describes, and the test fixtures are
   the reference. Handling of a missing or unreadable file, a zone line that does not fit the
   format, or a blocklist line that is not a valid name is not specified by contract.md and has no
-  test; the plan picks one behaviour (for example: report the line on standard error and refuse to
-  start) and records it. No requirement is made of it (Principle IV).
+  test. The plan's decision (research R-3): the server prints `dnsd: <path>:<line>: <reason>` (or
+  the read error) to standard error and exits with status 1 before binding any socket. No
+  requirement is made of it (Principle IV).
 - The class field of a zone file line is `IN`; records are stored with class IN.
 - A record's TTL in the zone file is 0–4294967295.
 - A query of type ANY at a local name is treated like any other type: it matches records of type
@@ -662,9 +675,10 @@ query log and `/stats` as well as the cache.
 - CNAME following is a single step (contract.md § Zone file › CNAME speaks of "the target"); no
   chain is followed and no CNAME loop is possible.
 - The handler ignores the query class; contract.md leaves classes other than IN unspecified.
-- An upstream reply is matched by ID (contract.md, Principle VI). Whether it must also come from
-  the upstream's address and port, and carry the same question, is a plan decision (RFC 5452
-  recommends both); either way a non-matching reply is ignored, never answered.
+- An upstream reply is matched by ID (contract.md, Principle VI). Whether it must also have QR=1,
+  come from the upstream's address and port, and carry the same question, is a plan decision
+  (RFC 5452 recommends the last two; research R-7 requires all three); either way a non-matching
+  reply is ignored, never answered.
 - The upstream address is IPv4, as in contract.md § Command line and 001's Config.
 - Calls to the cache role go through the placeholder until 003 merges; until then the cached
   branch never fires, and every name that is neither local nor blocked is forwarded.
