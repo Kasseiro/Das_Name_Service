@@ -109,7 +109,7 @@ lifetime.
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] No code: the `(name, qtype)` dict key of T002/T005 gives FR-006, and DC-3 because `Name` equality and hash are ASCII case-insensitive (research R-1). Run `pytest --impl=. tests/test_cache.py -k "per_type or per_name or new_querys_id"`; all pass. If one fails, fix the key handling in `dnsd/cache.py` only (do not normalise names yourself)
+- [X] T009 [US3] No code: the `(name, qtype)` dict key of T002/T005 gives FR-006, and DC-3 because `Name` equality and hash are ASCII case-insensitive (research R-1). Run `pytest --impl=. tests/test_cache.py -k "per_type or per_name or new_querys_id"`; all pass. If one fails, fix the key handling in `dnsd/cache.py` only (do not normalise names yourself)
 
 **Checkpoint**: US1–US3 tests pass.
 
@@ -127,8 +127,8 @@ with an SOA in the authority section, for at most min(SOA TTL, MINIMUM).
 
 ### Implementation for User Story 4
 
-- [ ] T010 [US4] Complete `_lifetime` in `dnsd/cache.py` (FR-004, FR-005, DC-4, research R-2, data-model § Lifetime): first, if `reply.header.tc` is set return `0` ("a truncated reply must not be served for its full TTL"; any RCODE); then keep the T004 positive branch; add — if `rcode == NXDOMAIN` or (`rcode == NOERROR` and `answers` empty): `soas = [rr for rr in reply.authority if rr.rtype == TYPE_SOA]`; if `soas` is empty return `0`; else `bound = min(min(rr.ttl, rr.rdata.minimum) for rr in soas)`; if `reply.answers` is not empty, `bound = min(bound, min(rr.ttl for rr in reply.answers))`; return `bound`. Every other RCODE (SERVFAIL, REFUSED, NOTIMP, FORMERR, …) returns `0`. Order the branches so `NOERROR` with answers takes the positive branch and `NXDOMAIN` with answers takes the negative one. An SOA in the answer section does not count. Call `min` only on non-empty sequences
-- [ ] T011 [US4] Run the five US4 tests: `pytest --impl=. tests/test_cache.py -k "without_soa or with_soa or servfail_from_timeout or error_reply"`; all pass (the parametrised ones expand to 3 and 2 cases). Fix in `dnsd/cache.py` only
+- [X] T010 [US4] Complete `_lifetime` in `dnsd/cache.py` (FR-004, FR-005, DC-4, research R-2, data-model § Lifetime): first, if `reply.header.tc` is set return `0` ("a truncated reply must not be served for its full TTL"; any RCODE); then keep the T004 positive branch; add — if `rcode == NXDOMAIN` or (`rcode == NOERROR` and `answers` empty): `soas = [rr for rr in reply.authority if rr.rtype == TYPE_SOA]`; if `soas` is empty return `0`; else `bound = min(min(rr.ttl, rr.rdata.minimum) for rr in soas)`; if `reply.answers` is not empty, `bound = min(bound, min(rr.ttl for rr in reply.answers))`; return `bound`. Every other RCODE (SERVFAIL, REFUSED, NOTIMP, FORMERR, …) returns `0`. Order the branches so `NOERROR` with answers takes the positive branch and `NXDOMAIN` with answers takes the negative one. An SOA in the answer section does not count. Call `min` only on non-empty sequences
+- [X] T011 [US4] Run the five US4 tests: `pytest --impl=. tests/test_cache.py -k "without_soa or with_soa or servfail_from_timeout or error_reply"`; all pass (the parametrised ones expand to 3 and 2 cases). Fix in `dnsd/cache.py` only
 
 **Checkpoint**: all 17 required cache tests pass (quickstart § 2).
 

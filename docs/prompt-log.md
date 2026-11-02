@@ -955,3 +955,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-048
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-047
+- **Prompt:**
+  ```
+  Continue with Phase 5 and Phase 6, stopping after Phase 6.
+  ```
+- **Why this prompt:** Phase 5 needed no code, so two phases in one checkpoint: per-question matching (US3) and the full lifetime rule (US4).
+- **Expected:** US3 tests pass unchanged; _lifetime completed (TC=1, negative with SOA, errors); all 17 required cache tests pass.
+- **Got:** as expected. T009: 3 tests pass with no code change. T010: _lifetime returns 0 for TC=1 first (DC-4), lowest answer TTL for positive answers, lowest min(SOA TTL, MINIMUM) for negative answers with an SOA (capped by any answer TTL), 0 otherwise. All 17 required cache tests pass (20 cases, about 25 s). ruff flagged a long import line, which it wrapped; ruff/bandit clean. Pointed out that DC-2 and DC-4 have no test and go to the Phase 7 review.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

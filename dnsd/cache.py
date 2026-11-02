@@ -3,7 +3,15 @@ import threading
 import time
 from dataclasses import dataclass, replace
 
-from dnsd.parser import NOERROR, Header, Message, Name, ResourceRecord
+from dnsd.parser import (
+    NOERROR,
+    NXDOMAIN,
+    TYPE_SOA,
+    Header,
+    Message,
+    Name,
+    ResourceRecord,
+)
 
 
 @dataclass(frozen=True)
@@ -18,8 +26,19 @@ class _Entry:
 
 def _lifetime(reply: Message) -> int:
     """Seconds a reply may be cached; 0 means it is not cached (research R-2)."""
-    if reply.header.rcode == NOERROR and reply.answers:
+    if reply.header.tc:
+        return 0  # spec DC-4: a truncated reply is never cached
+    rcode = reply.header.rcode
+    if rcode == NOERROR and reply.answers:
         return min(rr.ttl for rr in reply.answers)
+    if rcode in (NOERROR, NXDOMAIN):
+        soas = [rr for rr in reply.authority if rr.rtype == TYPE_SOA]
+        if not soas:
+            return 0
+        bound = min(min(rr.ttl, rr.rdata.minimum) for rr in soas)  # RFC 2308
+        if reply.answers:
+            bound = min(bound, min(rr.ttl for rr in reply.answers))
+        return bound
     return 0
 
 
