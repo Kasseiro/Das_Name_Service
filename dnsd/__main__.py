@@ -3,10 +3,10 @@ import argparse
 import sys
 
 from dnsd.blocklist import load_blocklist
+from dnsd.cache import Cache
 from dnsd.forwarder import make_handler
 from dnsd.listener import (
     Config,
-    PlaceholderCache,
     PlaceholderQueryLog,
     ServerState,
     Stats,
@@ -40,7 +40,7 @@ def main() -> None:
         config,
         zone,
         blocklist,
-        PlaceholderCache(),
+        Cache(),
         Stats(),
         PlaceholderQueryLog(),
     )

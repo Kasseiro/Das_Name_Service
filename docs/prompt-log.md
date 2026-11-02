@@ -780,3 +780,229 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-039
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-specify Feature: the TTL-respecting cache for dnsd. Builds on 001 and 002: a Cache store filling the cache role of specs/001-parser-listener/contracts/interfaces.md exactly (get, put), installed in ServerState by __main__.py in place of PlaceholderCache. The handler from 002 already calls get and put in the order of contract.md § Responses and must not change (002 SC-008). Import shared types from dnsd.parser and dnsd.listener; do not redefine them (Principle IX).
+
+  Scope, per contract.md § Responses › Cache:
+  - Positive caching: a NOERROR reply with at least one answer record is cached for the lowest TTL in its answer section; until it expires, the same question is answered from the cache.
+  - TTLs in a cached answer are reduced by the time spent in the cache, to within one second.
+  - Negative caching: NXDOMAIN or empty NOERROR is cached only with an SOA in the authority section, for at most min(SOA TTL, SOA MINIMUM) (RFC 2308); otherwise not cached.
+  - SERVFAIL and every other RCODE are never cached.
+  - Case-insensitive matching and a size limit are unspecified by the contract; decide the simplest option and record it.
+  - Thread safety per 001 interfaces.md concurrency rules (one lock, no I/O inside it).
+
+  Out of scope: the query log and admin API (004), any change to the handler, zone, blocklist or forwarder.
+
+  Verified by: tests/test_cache.py, plus the two cache tests 002 deferred to 003. Tests in test_cache.py that use the admin API (blocking/records takes effect, stats and log counters) are deferred to 004.
+  ```
+- **Why this prompt:** the 002 handler already calls get/put, so 003 is only a Cache store filling 001's cache role plus one line in __main__.py; the contract's cache rules are cited, unspecified points left to the AI to decide simply.
+- **Expected:** spec.md with FRs mapped to test_cache.py; admin-API tests deferred to 004.
+- **Got:** spec with FR-001–FR-010 and no open questions; checklist passes. It read the 002 handler and confirmed it needs no change; noted the handler passes every counting upstream reply to put (including SERVFAIL), so the store must reject what it shouldn't keep. Decisions: case-insensitive matching (free, since names already compare that way); no size limit, expired entries removed on lookup (flagged unbounded growth as a risk); TTL ageing in whole seconds on a monotonic clock. "Store negative answers for exactly min(SOA TTL, MINIMUM)" made a design constraint (DC-2), since tests only check the upper bound, following 002's DC-1 precedent. Acceptance: 82 tests (17 of 22 in test_cache.py incl. the two 002 deferred, plus 002's 65); 5 deferred to 004, one of them (test_stats_count_a_miss_after_expiry) newly identified.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
+
+### S-040
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-plan Python 3.11, standard library only. Keep it minimal (Principle VIII).
+  - Files: dnsd/cache.py (the Cache store). __main__.py changes only to install it in place of PlaceholderCache. No change to parser.py, listener.py, zone.py, blocklist.py or forwarder.py.
+  - Store: one dict keyed by (name, qtype), one threading.Lock, time.monotonic for ageing; expired entries removed when a lookup finds them; no size limit.
+  - Verification is the existing suite; do not add or modify tests/. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** pin the store design up front so the plan can't add a sweeper, size limit or extra layers.
+- **Expected:** plan for one file plus the __main__ change.
+- **Got:** plan, research, data model, contracts/cache.md, quickstart; Constitution Check (v1.1.1) passes before and after design, nothing to justify. Key (Name, qtype), case-insensitive via Name equality; lifetime computed outside the lock (lowest answer TTL; negative answers lowest min(SOA TTL, MINIMUM), capped by any answer TTL; otherwise not stored, and lifetime 0 leaves an existing entry untouched); ageing in whole seconds, TTLs floored at 0, expired entries removed on lookup. Noted that only replies the forwarder accepted reach put, so spoofed datagrams can't fill the cache. Two review points recorded: unbounded growth and DC-2 not observable by tests.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-041
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-tasks
+  ```
+- **Why this prompt:** break the 003 plan into ordered tasks.
+- **Expected:** tasks touching only cache.py and __main__.py; no test tasks.
+- **Got:** 16 tasks in 8 phases (setup, foundational, US1–US5, polish); each story phase names the test_cache.py tests that prove it, with a -k filter. US3 needs no code (the (Name, qtype) key already gives it). Noted that US1 alone is not shippable, because entries never expire until US2. Its first draft had out-of-sequence task IDs and stale cross-references; it found and fixed them itself in a second pass.
+- **Verdict:** worked
+- **Failure mode:** – (numbering slips in its own draft, self-corrected)
+- **Fixed by:** –
+- **Commit:** 
+
+### S-042
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** cross-check the 003 artifacts before implementation.
+- **Expected:** few findings; 003 is small.
+- **Got:** no critical issues, 2 high, 4 low. C1/C2 (Principle IV): FR-002's locking clause and FR-006's case-insensitivity cited tests that would pass without the behaviour; for C2 it worked out that the fake upstream itself ignores case, so the cited test cannot detect a cache miss. U1: a truncated (TC=1) upstream reply would be cached for its full TTL. Lows: wrong rationale in R-3, a [P] marker on a dependent task, an underestimated gate runtime. It verified that every -k filter selects exactly the intended tests and that the counts add up (17 + 5 = 22; 17 + 65 = 82). Read-only.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-043
+- **Commit:** 
+
+### S-043
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-042
+- **Prompt:**
+  ```
+  Apply these, then stop:
+  C1: narrow FR-002 to "exactly the role's two methods, returning new lists"; move the locking rule (001 concurrency rule 1) into DC-1.
+  C2: FR-006 keeps "same name and same type only" with the per-name and per-type tests; record case-insensitive matching as an Assumption plus a design constraint checked in review.
+  U1: put does not store a reply with TC=1 (a truncated reply must not be served for its full TTL). Record it as a design constraint checked in review, add the edge case, and add it to the T010 lifetime task and the T012 review.
+  I1: fix the R-3 rationale wording.
+  P1: drop [P] from T003.
+  A1: change the gate estimate to about 20–25 s.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve the two Principle IV findings the same way as in 001 and 002 (untestable clauses become review-checked design constraints), and close the truncated-reply gap with one condition rather than caching a partial answer. No second analyze run.
+- **Expected:** spec, plan-side and task edits only.
+- **Got:** all applied across spec, research, data model, contract, quickstart, plan, tasks and checklist. FR-002 and FR-006 narrowed; DC-1 now holds the locking rule, new DC-3 (case-insensitive keying, no normalisation) and DC-4 (TC=1 → lifetime 0, checked before any RCODE branch); T010 and T012 updated; R-3 rationale corrected; T003 no longer parallel; gate estimate 20–25 s. tests/ and dnsd/ untouched.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-044
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-implement Work through specs/003-cache/tasks.md in order. Stop after each phase checkpoint and report so I can review before continuing. Change only dnsd/cache.py and dnsd/__main__.py. Do not modify tests/, do not commit, do not write prompt-log entries.
+  ```
+- **Why this prompt:** implement 003 phase by phase with a review at each checkpoint (Principle X), limited to the two files the plan names.
+- **Expected:** Phase 1 (T001): baseline.
+- **Got:** the 65 tests 002 requires pass before any change (128 cases, 9 deferred to 004 left out); tools confirmed; checklist 16/16; .gitignore already sufficient. Only the task checkbox changed.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-045
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-044
+- **Prompt:**
+  ```
+  continue with Phase 2
+  ```
+- **Why this prompt:** next checkpoint: Cache skeleton and its installation (T002–T003).
+- **Expected:** dnsd/cache.py skeleton; __main__ installs Cache() in place of PlaceholderCache().
+- **Got:** as expected: _Entry with the data-model fields, Cache with one lock and a (Name, qtype) dict, get/put stubs with the contract signatures; __main__ diff is just the import and the constructor swap; PlaceholderCache stays in listener.py. ruff/bandit clean, 002 gate 128/128 cases.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-046
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-045
+- **Prompt:**
+  ```
+  continue with Phase 3
+  ```
+- **Why this prompt:** next checkpoint: store and return positive answers (US1, T004–T007).
+- **Expected:** _lifetime (positive branch), put, get without ageing; US1 tests pass.
+- **Got:** as expected: lifetime computed outside the lock, lifetime 0 leaves existing entries untouched, only the dict assignment under the lock; get returns a new Message with RCODE and new section lists. Five US1 tests pass; ruff/bandit clean. It warned on its own that this intermediate state must not ship, because entries never expire until Phase 4.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-047
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-046
+- **Prompt:**
+  ```
+  continue with Phase 4
+  ```
+- **Why this prompt:** next checkpoint: TTL ageing and expiry (US2, T008).
+- **Expected:** get ages TTLs in whole seconds and removes expired entries.
+- **Got:** as expected: age = whole seconds on the monotonic clock; expired entries deleted on lookup and None returned; _aged returns new lists with TTLs floored at 0. US1 + US2 tests pass (10/10); ruff/bandit clean.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-048
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-047
+- **Prompt:**
+  ```
+  Continue with Phase 5 and Phase 6, stopping after Phase 6.
+  ```
+- **Why this prompt:** Phase 5 needed no code, so two phases in one checkpoint: per-question matching (US3) and the full lifetime rule (US4).
+- **Expected:** US3 tests pass unchanged; _lifetime completed (TC=1, negative with SOA, errors); all 17 required cache tests pass.
+- **Got:** as expected. T009: 3 tests pass with no code change. T010: _lifetime returns 0 for TC=1 first (DC-4), lowest answer TTL for positive answers, lowest min(SOA TTL, MINIMUM) for negative answers with an SOA (capped by any answer TTL), 0 otherwise. All 17 required cache tests pass (20 cases, about 25 s). ruff flagged a long import line, which it wrapped; ruff/bandit clean. Pointed out that DC-2 and DC-4 have no test and go to the Phase 7 review.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-049 ★
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-048
+- **Prompt:**
+  ```
+  Continue with Phase 7 and Phase 8 and give the final report.
+  ```
+- **Why this prompt:** review (T012) and polish (T013–T016) together, since both are small.
+- **Expected:** review of scope and DC-1–DC-4; lint, both gates, full-suite failure list.
+- **Got:** the review found a conflict between 003's own plan (R-6, T005: build the entry outside the lock) and the binding 001 concurrency rule 1 / DC-1 (lock for the whole method body); it changed put to hold the lock throughout and asked before editing the documents, since changes were limited to the code files. A throwaway script verified the untested constraints: DC-2 (NXDOMAIN with SOA TTL 300 / MINIMUM 60 stored 60 s), DC-3 (mixed-case lookup hits), DC-4 (TC=1 not stored), a SERVFAIL leaving an existing entry intact, and returned lists not aliasing stored data. Phase 8: ruff/bandit clean; 17 cache tests (20 cases) and 002's 65 (128 cases) pass; full suite 148 passed, 0 failed, 96 setup errors in 58 functions, all "admin API not reachable" (5 cache, 9 from 002, 44 admin API), none from the DNS port.
+- **Verdict:** worked
+- **Failure mode:** plan/task contradicted the binding 001 interface (introduced in S-040/S-041, missed by S-042's analyze); caught in the implementation review
+- **Fixed by:** same prompt (code), S-050 (documents)
+- **Commit:**
+
+### S-050
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-049
+- **Prompt:**
+  ```
+  Yes, align them: update research R-6, T005, T012 and anything else that says put works outside the lock, so the documents match the code (lock held for the whole body of put, per 001 concurrency rule 1 and DC-1). Documents only; no code changes. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** keep the plan and tasks consistent with the code after the S-049 review fix.
+- **Expected:** document edits only.
+- **Got:** R-2 and R-6 rewritten (lock for the whole body of both methods; the original "compute first, lock only the assignment" design kept under Alternatives as rejected at review, with the reason); T005 and T012 updated; it searched the rest of specs/003-cache/ and confirmed nothing else contradicted the code. No code changes.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
