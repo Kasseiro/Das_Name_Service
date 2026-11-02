@@ -972,3 +972,37 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-049 ★
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-048
+- **Prompt:**
+  ```
+  Continue with Phase 7 and Phase 8 and give the final report.
+  ```
+- **Why this prompt:** review (T012) and polish (T013–T016) together, since both are small.
+- **Expected:** review of scope and DC-1–DC-4; lint, both gates, full-suite failure list.
+- **Got:** the review found a conflict between 003's own plan (R-6, T005: build the entry outside the lock) and the binding 001 concurrency rule 1 / DC-1 (lock for the whole method body); it changed put to hold the lock throughout and asked before editing the documents, since changes were limited to the code files. A throwaway script verified the untested constraints: DC-2 (NXDOMAIN with SOA TTL 300 / MINIMUM 60 stored 60 s), DC-3 (mixed-case lookup hits), DC-4 (TC=1 not stored), a SERVFAIL leaving an existing entry intact, and returned lists not aliasing stored data. Phase 8: ruff/bandit clean; 17 cache tests (20 cases) and 002's 65 (128 cases) pass; full suite 148 passed, 0 failed, 96 setup errors in 58 functions, all "admin API not reachable" (5 cache, 9 from 002, 44 admin API), none from the DNS port.
+- **Verdict:** worked
+- **Failure mode:** plan/task contradicted the binding 001 interface (introduced in S-040/S-041, missed by S-042's analyze); caught in the implementation review
+- **Fixed by:** same prompt (code), S-050 (documents)
+- **Commit:**
+
+### S-050
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-049
+- **Prompt:**
+  ```
+  Yes, align them: update research R-6, T005, T012 and anything else that says put works outside the lock, so the documents match the code (lock held for the whole body of put, per 001 concurrency rule 1 and DC-1). Documents only; no code changes. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** keep the plan and tasks consistent with the code after the S-049 review fix.
+- **Expected:** document edits only.
+- **Got:** R-2 and R-6 rewritten (lock for the whole body of both methods; the original "compute first, lock only the assignment" design kept under Alternatives as rejected at review, with the reason); T005 and T012 updated; it searched the rest of specs/003-cache/ and confirmed nothing else contradicted the code. No code changes.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

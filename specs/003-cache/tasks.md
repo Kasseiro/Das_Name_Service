@@ -76,7 +76,7 @@ the 65 002 tests still pass (the cache never hits yet).
 ### Implementation for User Story 1
 
 - [X] T004 [US1] Add module function `_lifetime(reply: Message) -> int` to `dnsd/cache.py` (research R-2, data-model § Lifetime), positive branch only for now: if `reply.header.rcode == NOERROR` and `reply.answers` is not empty, return `min(rr.ttl for rr in reply.answers)`; otherwise return `0` (the negative branch is added in T010). It is pure and takes no lock
-- [X] T005 [US1] Implement `Cache.put` in `dnsd/cache.py` (FR-003): compute `lifetime = _lifetime(reply)` **before** taking the lock; if `lifetime <= 0` return without touching `self._entries` ("A lifetime of 0 means `put` stores nothing and leaves any existing entry unchanged"); otherwise build `_Entry(reply.header.rcode, tuple(reply.answers), tuple(reply.authority), tuple(reply.additional), time.monotonic(), lifetime)` and, under the lock, assign `self._entries[(name, qtype)] = entry` (replacing any earlier entry)
+- [X] T005 [US1] Implement `Cache.put` in `dnsd/cache.py` (FR-003, DC-1): take the lock for the whole body (`with self._lock:` around everything; 001 concurrency rule 1); inside it, compute `lifetime = _lifetime(reply)`; if `lifetime <= 0` return without touching `self._entries` ("A lifetime of 0 means `put` stores nothing and leaves any existing entry unchanged"); otherwise assign `self._entries[(name, qtype)] = _Entry(reply.header.rcode, tuple(reply.answers), tuple(reply.authority), tuple(reply.additional), time.monotonic(), lifetime)` (replacing any earlier entry)
 - [X] T006 [US1] Implement `Cache.get` in `dnsd/cache.py` (FR-006, FR-007): under the lock, look up `self._entries.get((name, qtype))`; return `None` if absent; otherwise return `Message(Header(rcode=entry.rcode), [], list(entry.answers), list(entry.authority), list(entry.additional))` — header carries only the RCODE, no questions, new lists in stored order (data-model § Entry life cycle). Ageing and expiry are added in T008
 - [X] T007 [US1] Run the five US1 tests named under Independent Test: `pytest --impl=. tests/test_cache.py -k "repeat_query or survives_a_change or keeps_response_shape or new_querys_id or over_tcp"`; all pass. Fix in `dnsd/cache.py` only
 
@@ -143,7 +143,7 @@ merges.
 
 ### Implementation for User Story 5
 
-- [ ] T012 [US5] Scope and contract review of `dnsd/cache.py` and `dnsd/__main__.py` (FR-001, FR-002, SC-007, DC-1 – DC-4): `git diff --stat main -- dnsd/` lists only `dnsd/cache.py` and `dnsd/__main__.py`; `Cache`'s public methods are exactly `get` and `put` with the contracts/cache.md signatures; only `dnsd/__main__.py` imports `dnsd.cache`; (DC-1) one lock taken for the whole body of `get` and `put`, nothing under it does I/O, logging or calls another store, and `put` computes `_lifetime` and the tuples outside it; `get` returns new lists; (DC-2) a negative reply with an SOA is stored for exactly `min(SOA ttl, SOA minimum)` (capped by the lowest answer TTL if there are answers); (DC-3) the dict key is the `Name` value as passed, with no lower-casing or other normalisation; (DC-4) `_lifetime` returns 0 for a reply with `header.tc` set, before any RCODE branch. Fix in `dnsd/cache.py` / `dnsd/__main__.py` only
+- [X] T012 [US5] Scope and contract review of `dnsd/cache.py` and `dnsd/__main__.py` (FR-001, FR-002, SC-007, DC-1 – DC-4): `git diff --stat main -- dnsd/` lists only `dnsd/cache.py` and `dnsd/__main__.py`; `Cache`'s public methods are exactly `get` and `put` with the contracts/cache.md signatures; only `dnsd/__main__.py` imports `dnsd.cache`; (DC-1) one lock taken for the whole body of `get` and `put`, nothing under it does I/O, logging or calls another store, and `put` calls `_lifetime` and builds the `_Entry` while holding it; `get` returns new lists; (DC-2) a negative reply with an SOA is stored for exactly `min(SOA ttl, SOA minimum)` (capped by the lowest answer TTL if there are answers); (DC-3) the dict key is the `Name` value as passed, with no lower-casing or other normalisation; (DC-4) `_lifetime` returns 0 for a reply with `header.tc` set, before any RCODE branch. Fix in `dnsd/cache.py` / `dnsd/__main__.py` only
 
 **Checkpoint**: All five user stories implemented and checked.
 
@@ -153,10 +153,10 @@ merges.
 
 **Purpose**: Gates required by the constitution and the spec's acceptance criteria
 
-- [ ] T013 Run `ruff check dnsd` and `bandit -r dnsd` from the repo root and fix every finding in `dnsd/cache.py` or `dnsd/__main__.py` (Principle VII; zero findings)
-- [ ] T014 Run the acceptance gate of `specs/003-cache/quickstart.md` § 2 (17 cache tests, 5 deselected) and § 3 (the 65 tests of 002): all pass, nothing skipped
-- [ ] T015 Run the full suite `pytest tests --impl .` (quickstart § 4) and record every failing test: each must be one of the 5 tests spec.md § Verification status defers to 004, one of the 9 tests 002 defers to 004, or in `tests/test_admin_api.py`, and fail on a missing `/stats`, `/log`, `/records` or `/blocklist` (connection refused or 404 from the admin port), never on "dnsd exited" or "no response" from the DNS port. Report the list for the reviewer (constitution § Technical Constraints)
-- [ ] T016 Re-read `dnsd/cache.py` against `specs/003-cache/contracts/cache.md` and 001 `contracts/interfaces.md` one last time: no public name beyond `Cache`, `get`, `put`; no unused imports or code; no size limit, sweep or option (Principle VIII, IX)
+- [X] T013 Run `ruff check dnsd` and `bandit -r dnsd` from the repo root and fix every finding in `dnsd/cache.py` or `dnsd/__main__.py` (Principle VII; zero findings)
+- [X] T014 Run the acceptance gate of `specs/003-cache/quickstart.md` § 2 (17 cache tests, 5 deselected) and § 3 (the 65 tests of 002): all pass, nothing skipped
+- [X] T015 Run the full suite `pytest tests --impl .` (quickstart § 4) and record every failing test: each must be one of the 5 tests spec.md § Verification status defers to 004, one of the 9 tests 002 defers to 004, or in `tests/test_admin_api.py`, and fail on a missing `/stats`, `/log`, `/records` or `/blocklist` (connection refused or 404 from the admin port), never on "dnsd exited" or "no response" from the DNS port. Report the list for the reviewer (constitution § Technical Constraints)
+- [X] T016 Re-read `dnsd/cache.py` against `specs/003-cache/contracts/cache.md` and 001 `contracts/interfaces.md` one last time: no public name beyond `Cache`, `get`, `put`; no unused imports or code; no size limit, sweep or option (Principle VIII, IX)
 
 ---
 

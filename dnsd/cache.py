@@ -72,16 +72,15 @@ class Cache:
             )
 
     def put(self, name: Name, qtype: int, reply: Message) -> None:
-        lifetime = _lifetime(reply)
-        if lifetime <= 0:
-            return
-        entry = _Entry(
-            reply.header.rcode,
-            tuple(reply.answers),
-            tuple(reply.authority),
-            tuple(reply.additional),
-            time.monotonic(),
-            lifetime,
-        )
         with self._lock:
-            self._entries[(name, qtype)] = entry
+            lifetime = _lifetime(reply)
+            if lifetime <= 0:
+                return
+            self._entries[(name, qtype)] = _Entry(
+                reply.header.rcode,
+                tuple(reply.answers),
+                tuple(reply.authority),
+                tuple(reply.additional),
+                time.monotonic(),
+                lifetime,
+            )

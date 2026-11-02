@@ -19,8 +19,8 @@ record the choices the planning input left open or fixed.
 
 ## R-2: Which replies are stored, and for how long (FR-003 – FR-005)
 
-- **Decision**: a private pure function `_lifetime(reply) -> int` computed **before** taking the
-  lock:
+- **Decision**: a private pure function `_lifetime(reply) -> int`, called by `put` while it holds
+  the lock (research R-6):
   - TC=1 (any RCODE): `0` (spec DC-4; checked first).
   - RCODE NOERROR with answers: `min(rr.ttl for rr in answers)`.
   - RCODE NXDOMAIN, or NOERROR with no answers: let `soas` be the authority records with
@@ -32,8 +32,8 @@ record the choices the planning input left open or fixed.
   `put` stores the entry only when the lifetime is greater than 0; otherwise it returns without
   touching the dict (an uncacheable reply never removes a valid entry, spec Edge Cases).
 - **Rationale**: one place decides cacheability; a lifetime of 0 doubles as "do not cache", so
-  TTL-0 answers and missing SOAs fall out of the same rule. Computing it outside the lock keeps the
-  locked section to a single dict assignment.
+  TTL-0 answers and missing SOAs fall out of the same rule. It is pure in-memory work on the
+  caller's reply, so calling it under the lock is allowed by 001 concurrency rule 2.
 - **Alternatives**: storing a negative reply for a shorter time than the bound (the contract says
   "at most"; using the bound itself is simplest, spec DC-2); not caching negative replies at all
   (allowed by "may", but the spec scope includes negative caching).
@@ -76,14 +76,19 @@ record the choices the planning input left open or fixed.
 
 ## R-6: Locking (spec DC-1; FR-002 for the new lists)
 
-- **Decision**: one private `threading.Lock` per `Cache`. `get` holds it for the lookup, expiry
-  check, deletion and building the returned `Message` (pure in-memory work on tuples); `put`
-  computes `_lifetime` and the tuples first, then holds it for the dict assignment only. No I/O, no
-  logging, no call to another store under the lock.
-- **Rationale**: 001 interfaces.md concurrency rules 1–3. The clock is read inside `get`'s lock so
-  the age and the deletion decision see the same entry; reading `time.monotonic()` is not I/O.
+- **Decision**: one private `threading.Lock` per `Cache`, held for the whole body of both public
+  methods (001 interfaces.md concurrency rule 1, spec DC-1). `get` holds it for the lookup, expiry
+  check, deletion and building the returned `Message`; `put` holds it for `_lifetime`, building the
+  `_Entry` (tuples and `time.monotonic()`) and the dict assignment. Everything under the lock is
+  pure in-memory work: no I/O, no logging, no call to another store (rule 2).
+- **Rationale**: 001 interfaces.md concurrency rules 1–3. The clock is read inside the lock in both
+  methods, so the age and the deletion decision see the same entry; reading `time.monotonic()` is
+  not I/O.
 - **Alternatives**: `RLock` (no re-entry needed); lock-free dict access relying on the GIL (rule 1
-  requires the lock).
+  requires the lock); computing `_lifetime` and the `_Entry` before taking the lock in `put` and
+  holding it only for the dict assignment (the original plan; rejected at review because rule 1
+  requires the lock for the whole body of every public method, and the work is too small to gain
+  anything from a shorter locked section).
 
 ## R-7: Entry point
 
