@@ -1006,3 +1006,6 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### Note: feature 004
+Built by Adam outside the Spec Kit workflow (commits 6cad020–7c0b59c, PR #5). No prompts were recorded, so there are no S entries for 004. Only specs/004-querylog-api/spec.md was written; no plan, tasks or analyze run. Full suite after merge: 244 passed, 0 failed.
