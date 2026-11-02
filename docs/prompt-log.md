@@ -809,3 +809,23 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:**
+
+### S-040
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-plan Python 3.11, standard library only. Keep it minimal (Principle VIII).
+  - Files: dnsd/cache.py (the Cache store). __main__.py changes only to install it in place of PlaceholderCache. No change to parser.py, listener.py, zone.py, blocklist.py or forwarder.py.
+  - Store: one dict keyed by (name, qtype), one threading.Lock, time.monotonic for ageing; expired entries removed when a lookup finds them; no size limit.
+  - Verification is the existing suite; do not add or modify tests/. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** pin the store design up front so the plan can't add a sweeper, size limit or extra layers.
+- **Expected:** plan for one file plus the __main__ change.
+- **Got:** plan, research, data model, contracts/cache.md, quickstart; Constitution Check (v1.1.1) passes before and after design, nothing to justify. Key (Name, qtype), case-insensitive via Name equality; lifetime computed outside the lock (lowest answer TTL; negative answers lowest min(SOA TTL, MINIMUM), capped by any answer TTL; otherwise not stored, and lifetime 0 leaves an existing entry untouched); ageing in whole seconds, TTLs floored at 0, expired entries removed on lookup. Noted that only replies the forwarder accepted reach put, so spoofed datagrams can't fill the cache. Two review points recorded: unbounded growth and DC-2 not observable by tests.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
