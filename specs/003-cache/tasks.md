@@ -46,7 +46,7 @@ description: "Task list for feature 003: TTL-respecting cache"
 
 **Purpose**: Confirm the starting point
 
-- [ ] T001 From the repo root, confirm `ruff --version`, `bandit --version` and `pytest --version` run, and that the 65 required tests of `specs/002-zone-forwarder/quickstart.md` § 2 pass on the current `dnsd/` before any change (baseline; no file changes)
+- [X] T001 From the repo root, confirm `ruff --version`, `bandit --version` and `pytest --version` run, and that the 65 required tests of `specs/002-zone-forwarder/quickstart.md` § 2 pass on the current `dnsd/` before any change (baseline; no file changes)
 
 ---
 
@@ -57,8 +57,8 @@ check of every story needs it.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Create `dnsd/cache.py` (module docstring citing contract.md § Responses › Cache and spec 003) with a private frozen dataclass `_Entry` (data-model § `_Entry`): fields `rcode: int`, `answers: tuple[ResourceRecord, ...]`, `authority: tuple[ResourceRecord, ...]`, `additional: tuple[ResourceRecord, ...]`, `stored: float`, `lifetime: int`; and class `Cache` whose `__init__` sets `self._lock = threading.Lock()` and `self._entries: dict[tuple[Name, int], _Entry] = {}`. Add `get` returning `None` and `put` returning `None` (both filled in by US1), each with the signature of contracts/cache.md
-- [ ] T003 Change `dnsd/__main__.py` (contracts/cache.md § `dnsd.__main__`, research R-7): add `from dnsd.cache import Cache`, pass `Cache()` to `ServerState` in place of `PlaceholderCache()`, and remove `PlaceholderCache` from the `dnsd.listener` import list. Nothing else changes; `PlaceholderCache` stays defined in `dnsd/listener.py`
+- [X] T002 Create `dnsd/cache.py` (module docstring citing contract.md § Responses › Cache and spec 003) with a private frozen dataclass `_Entry` (data-model § `_Entry`): fields `rcode: int`, `answers: tuple[ResourceRecord, ...]`, `authority: tuple[ResourceRecord, ...]`, `additional: tuple[ResourceRecord, ...]`, `stored: float`, `lifetime: int`; and class `Cache` whose `__init__` sets `self._lock = threading.Lock()` and `self._entries: dict[tuple[Name, int], _Entry] = {}`. Add `get` returning `None` and `put` returning `None` (both filled in by US1), each with the signature of contracts/cache.md
+- [X] T003 Change `dnsd/__main__.py` (contracts/cache.md § `dnsd.__main__`, research R-7): add `from dnsd.cache import Cache`, pass `Cache()` to `ServerState` in place of `PlaceholderCache()`, and remove `PlaceholderCache` from the `dnsd.listener` import list. Nothing else changes; `PlaceholderCache` stays defined in `dnsd/listener.py`
 
 **Checkpoint**: `python -m dnsd` starts with the 002 quickstart flags; `ruff check dnsd` is clean;
 the 65 002 tests still pass (the cache never hits yet).

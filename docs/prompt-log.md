@@ -887,3 +887,37 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-044
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-implement Work through specs/003-cache/tasks.md in order. Stop after each phase checkpoint and report so I can review before continuing. Change only dnsd/cache.py and dnsd/__main__.py. Do not modify tests/, do not commit, do not write prompt-log entries.
+  ```
+- **Why this prompt:** implement 003 phase by phase with a review at each checkpoint (Principle X), limited to the two files the plan names.
+- **Expected:** Phase 1 (T001): baseline.
+- **Got:** the 65 tests 002 requires pass before any change (128 cases, 9 deferred to 004 left out); tools confirmed; checklist 16/16; .gitignore already sufficient. Only the task checkbox changed.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-045
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-044
+- **Prompt:**
+  ```
+  continue with Phase 2
+  ```
+- **Why this prompt:** next checkpoint: Cache skeleton and its installation (T002–T003).
+- **Expected:** dnsd/cache.py skeleton; __main__ installs Cache() in place of PlaceholderCache().
+- **Got:** as expected: _Entry with the data-model fields, Cache with one lock and a (Name, qtype) dict, get/put stubs with the contract signatures; __main__ diff is just the import and the constructor swap; PlaceholderCache stays in listener.py. ruff/bandit clean, 002 gate 128/128 cases.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
