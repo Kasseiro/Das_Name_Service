@@ -95,7 +95,7 @@ lifetime.
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] In `dnsd/cache.py` add module function `_aged(records: tuple[ResourceRecord, ...], age: int) -> list[ResourceRecord]` returning `[dataclasses.replace(rr, ttl=max(rr.ttl - age, 0)) for rr in records]` (FR-008, research R-3, R-4: every record is aged, OPT included). Change `Cache.get`: under the lock, after finding the entry, compute `age = int(time.monotonic() - entry.stored)` (whole seconds, rounded down); if `age >= entry.lifetime`, `del self._entries[(name, qtype)]` and return `None` (FR-009); otherwise return the Message of T006 with each section built by `_aged(section, age)` instead of `list(section)`. Then run the five US2 tests: `pytest --impl=. tests/test_cache.py -k "ttl_counts_down or right_after_caching or lowest_ttl or fetched_again or own_ttl"`; all pass
+- [X] T008 [US2] In `dnsd/cache.py` add module function `_aged(records: tuple[ResourceRecord, ...], age: int) -> list[ResourceRecord]` returning `[dataclasses.replace(rr, ttl=max(rr.ttl - age, 0)) for rr in records]` (FR-008, research R-3, R-4: every record is aged, OPT included). Change `Cache.get`: under the lock, after finding the entry, compute `age = int(time.monotonic() - entry.stored)` (whole seconds, rounded down); if `age >= entry.lifetime`, `del self._entries[(name, qtype)]` and return `None` (FR-009); otherwise return the Message of T006 with each section built by `_aged(section, age)` instead of `list(section)`. Then run the five US2 tests: `pytest --impl=. tests/test_cache.py -k "ttl_counts_down or right_after_caching or lowest_ttl or fetched_again or own_ttl"`; all pass
 
 **Checkpoint**: US1 and US2 tests pass together.
 

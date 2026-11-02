@@ -1,7 +1,7 @@
 """TTL-respecting cache of upstream replies (contract.md § Responses › Cache; spec 003)."""
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from dnsd.parser import NOERROR, Header, Message, Name, ResourceRecord
 
@@ -23,6 +23,11 @@ def _lifetime(reply: Message) -> int:
     return 0
 
 
+def _aged(records: tuple[ResourceRecord, ...], age: int) -> list[ResourceRecord]:
+    """New list of the records with each TTL reduced by age seconds, never below 0 (research R-3)."""
+    return [replace(rr, ttl=max(rr.ttl - age, 0)) for rr in records]
+
+
 class Cache:
     """Fills the Cache role of 001 contracts/interfaces.md § 3."""
 
@@ -35,12 +40,16 @@ class Cache:
             entry = self._entries.get((name, qtype))
             if entry is None:
                 return None
+            age = int(time.monotonic() - entry.stored)
+            if age >= entry.lifetime:
+                del self._entries[(name, qtype)]
+                return None
             return Message(
                 Header(rcode=entry.rcode),
                 [],
-                list(entry.answers),
-                list(entry.authority),
-                list(entry.additional),
+                _aged(entry.answers, age),
+                _aged(entry.authority, age),
+                _aged(entry.additional, age),
             )
 
     def put(self, name: Name, qtype: int, reply: Message) -> None:

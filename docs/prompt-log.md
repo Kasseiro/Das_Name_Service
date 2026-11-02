@@ -938,3 +938,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-047
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-046
+- **Prompt:**
+  ```
+  continue with Phase 4
+  ```
+- **Why this prompt:** next checkpoint: TTL ageing and expiry (US2, T008).
+- **Expected:** get ages TTLs in whole seconds and removes expired entries.
+- **Got:** as expected: age = whole seconds on the monotonic clock; expired entries deleted on lookup and None returned; _aged returns new lists with TTLs floored at 0. US1 + US2 tests pass (10/10); ruff/bandit clean.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
