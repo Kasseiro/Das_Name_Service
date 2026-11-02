@@ -921,3 +921,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-046
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-045
+- **Prompt:**
+  ```
+  continue with Phase 3
+  ```
+- **Why this prompt:** next checkpoint: store and return positive answers (US1, T004–T007).
+- **Expected:** _lifetime (positive branch), put, get without ageing; US1 tests pass.
+- **Got:** as expected: lifetime computed outside the lock, lifetime 0 leaves existing entries untouched, only the dict assignment under the lock; get returns a new Message with RCODE and new section lists. Five US1 tests pass; ruff/bandit clean. It warned on its own that this intermediate state must not ship, because entries never expire until Phase 4.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
