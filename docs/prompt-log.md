@@ -458,3 +458,325 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** manual edits: Principle IX rationale updated; README review-order bullet and change-of-plan note added
 - **Commit:**
+
+### S-022 ★
+- **Module:** zone, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-specify Feature: local zone, forwarder and the real resolution handler for dnsd. Builds on feature 001: use the message model, Query/Outcome/Handler, ServerState and the store roles from specs/001-parser-listener/contracts/interfaces.md; import shared types from dnsd.listener and do not redefine them (Principle IX).
+
+  Scope:
+  - Zone file loading per contract.md § Zone file, at startup, before the server answers (FR-005 of 001). A ZoneStore filling the zone role exactly as interfaces.md defines it, including the operations the admin API will use (records, add, remove, make_record, value_text).
+  - Local answers per contract.md § Responses and § Zone file: records, NODATA, NXDOMAIN under a local zone suffix, CNAME handling, AA=1.
+  - Forwarder per contract.md § Forwarded queries: random query ID and source port per query from secrets (Principle VI), only replies with a matching ID count, 2 s budget, TCP retry on TC=1, SERVFAIL on timeout or failure.
+  - The real resolution handler that replaces stub_handler: applies the rows of contract.md § Responses top to bottom (local zone, blocked, cache, forward), building the blocked responses itself and calling the blocklist and cache roles through ServerState. Until features 003 and 004 replace their placeholders, those branches never fire.
+  - Outcome fields per 001's interface: result and upstream_asked set correctly for every path.
+
+  Out of scope: the cache store's logic (003), the blocklist store, query log store and admin API (004).
+
+  Verified by: tests/test_zone.py, tests/test_forwarder.py, and the three deferred 001 tests that need big.home.lan (test_udp_response_over_512_bytes_is_truncated, test_truncated_answer_is_complete_over_tcp, test_edns_does_not_raise_udp_limit).
+  ```
+- **Why this prompt:** specify 002 on top of 001's interfaces; put the contract's response-table logic (including blocked responses) in the handler so later features only supply stores.
+- **Expected:** spec.md with FRs mapped to tests in test_zone.py and test_forwarder.py.
+- **Got:** spec.md with 22 FRs, each naming its tests, and a checklist. One clarification question: whether an upstream SERVFAIL relayed to the client is logged as "forwarded" or "error" (the contract's wording fits both; no test checks it). It also found on its own that 14 of 34 tests could not pass in 002 however correct the code: the test harness probes readiness with ads.example.com, which without a blocklist goes upstream and makes every exact upstream-count assertion off by one. This included the two random-ID/port security tests (Principle VI), for which it proposed a manual check.
+- **Verdict:** partly
+- **Failure mode:** – (scope problem caused by the feature split, found by the AI)
+- **Fixed by:** S-023 (Q1 answered; Blocklist store moved into 002)
+- **Commit:** 
+
+### S-023 ★
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-022
+- **Prompt:**
+  ```
+  Q1: A.
+
+  Scope change: since I am building all features, move the Blocklist store into 002: blocklist file loading per contract.md § Blocklist file at startup, and a store filling the blocklist role exactly as interfaces.md defines it (is_blocked with whole-label, case-insensitive matching; domains, add, remove). 004 keeps only the query log store and the admin API. Update the spec accordingly: scope, requirements with their tests, and Verification status. Recount which tests are still deferred and to which feature (003 cache, 004 querylog/api), and drop the manual security check if the random ID/port tests become verifiable. Do not touch tests/ and do not write prompt-log entries.
+
+  (follow-up) Apply the follow-ups in this branch:
+  1. Constitution § Development Workflow: change the feature list to "parser + listener, zone + blocklist + forwarder, cache, query log + admin API". Version 1.1.1 (PATCH), update the Sync Impact Report; Daniel approves it in the 002 PR.
+  2. README.md: update the feature list on line 38 the same way. Keep my existing edits.
+  3. 001: in contracts/interfaces.md change the blocklist owner from 004 to 002. In 001 spec.md § Verification status add one line: "Superseded 2026-11-02: the blocklist store moved to 002; the six blocklist-dependent tests are verified there (see 002 § Verification status)." Change nothing else in 001.
+  4. 002 checklist Notes: remove the stale Principle IV note about 14 deferred tests and the manual FR-013 check.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** Q1 per the contract's literal "error (SERVFAIL)". Moving the blocklist into 002 removes the off-by-one caused by the harness's readiness probe, so 002 can be verified on its own, including the Principle VI tests, without manual checks. The follow-ups bring the constitution, README and 001 in line with the new split.
+- **Expected:** spec updated with the blocklist in scope and tests recounted; the follow-up edits in the other files.
+- **Got:** spec rewritten: User Story 4 (blocking), FR-002/003 (blocklist loading), FR-013/014 (Blocklist store), FRs renumbered to FR-001–FR-025, Q1 and the scope change recorded under Clarifications. Recount: 65 tests required (13 zone, 22 forwarder, 10 blocklist, all 20 listener/fuzz/harness); deferred: 9 to 004, 2 to 003, 4 to 003+004; none of 001's tests deferred any more; manual security check dropped. It found on its own that the constitution, README and 001's spec and interfaces.md still described the old split, and left them unedited until asked. Follow-up: constitution 1.1.1 (PATCH) with an updated Sync Impact Report, README feature list, the 001 blocklist owner changed in both places in interfaces.md (one more than named, needed for consistency), the superseded note added verbatim; the stale checklist note had already been removed in the rewrite.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-024
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-plan Python 3.11, standard library only. Keep it minimal (Principle VIII).
+  - Files: dnsd/zone.py (zone file loading, ZoneStore), dnsd/blocklist.py (blocklist file loading, Blocklist store), dnsd/forwarder.py (upstream exchange and the real handler factory, (ServerState) -> Handler). __main__.py changes only to load both files and install the real stores and handler. No changes to parser.py or listener.py signatures (001 interfaces.md is binding).
+  - Forwarder: socket module directly, secrets for ID and port, one deadline of 2 s for the whole exchange including TCP retry.
+  - Stores: one threading.Lock each, per 001 concurrency rules.
+  - Missing or malformed zone/blocklist file: print the problem to stderr and exit non-zero before serving.
+  - Verification is the existing suite; do not add or modify tests/. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** pin files and technical choices up front as for 001. The handler goes in forwarder.py, because Principle IX has no resolver module.
+- **Expected:** plan, research, data model, contract and quickstart within the given constraints.
+- **Got:** all artifacts; Constitution Check (v1.1.1) passes before and after design. 10 decisions in research.md. contracts/modules.md lists the new public names (load_zone, load_blocklist, exchange, make_handler), only imported by __main__; the stores keep exactly their role's methods, so the loaders are module functions. Forwarder: fresh secrets ID (also for the TCP retry) and source port, UDP socket connected to the upstream, reply must match ID and question, one 2 s deadline. Blocked answers built as IPv4Address(0)/IPv6Address(0) to avoid bandit's "0.0.0.0" check. Four decisions flagged for review: ";" comments in zone lines (RFC 1035), blocklist lines with an inline "#" treated as malformed, UDP bind to ("", port) not yet run through bandit, a record directly under the root makes unmatched names NXDOMAIN.
+- **Verdict:** worked
+- **Failure mode:** – (one harsh default: inline "#" in the blocklist refuses startup)
+- **Fixed by:** S-025 (inline "#" treated as comment)
+- **Commit:** 
+
+### S-025
+- **Module:** blocklist
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-024
+- **Prompt:**
+  ```
+  Change one decision: in the blocklist file, text from "#" to the end of a line is a comment (contract.md leaves it unspecified), so "ads.example.com # ads" lists ads.example.com. Update research.md and wherever else it appears. Everything else accepted. Do not write prompt-log entries.
+  ```
+- **Why this prompt:** refusing to start over an inline annotation is harsh; the contract leaves it unspecified, so the forgiving rule is better.
+- **Expected:** decision changed in research.md and wherever it is referenced.
+- **Got:** R-2 rewritten (cut each line at the first "#"; covers whole-line and trailing comments with one step, mirrors the zone file's ";" rule; "#" cannot occur in a hostname); old rule kept as the rejected alternative. data-model.md, the spec's edge case and plan.md's Principle II row updated to match; it confirmed the other artifacts don't mention the rule.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-026
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-tasks
+  ```
+- **Why this prompt:** break the 002 plan into ordered, reviewable tasks.
+- **Expected:** tasks.md touching only zone.py, blocklist.py, forwarder.py and __main__.py; no test tasks.
+- **Got:** 31 tasks (T001–T031) in 10 phases, one per user story plus setup, foundational and polish. Ordered US4 (blocklist) before US5 (forwarding), because the forwarder tests need the harness's readiness probe to be blocked. A temporary SERVFAIL branch in the handler (T005) lets the server start early; T015/T020 replace it and T031 checks none is left. Flags three tests that pass early by accident (SERVFAIL already satisfies "not blocked"). Manual checks for startup errors (T028) and unreachable upstream; T030 defines which full-suite failures are acceptable (only 003/004-deferred, never "dnsd exited"/"no response"). It corrected its own task cross-references and parallel markers in a second pass.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
+
+### S-027
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** cross-check the 002 artifacts before implementation.
+- **Expected:** a few findings.
+- **Got:** 1 critical, 1 medium, 7 low. C1 (Principle IV): three FRs had clauses no named test could check (FR-003 "never written", FR-016's random ID on the TCP retry, FR-025's no-accounting/no-lock rules), the same pattern as in 001. W1: /speckit-clarify was never run; Q1 was settled during specify. Lows: stale "plan picks" wording (I1), QR=1 check missing from the assumptions (I2), trailing-# rule only in edge cases (I3), duplicated "not forwarded" clause (D1), tests that pass trivially under the temporary SERVFAIL (U1), unused 001 placeholders (U2), a vague bandit fallback (U3). Read-only.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-028
+- **Commit:** 
+
+### S-028
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-027
+- **Prompt:**
+  ```
+  Apply these, then stop:
+  C1: as you recommend. FR-003: drop "neither is ever written" (contract.md § Command line says it). FR-016: keep the TCP-retry ID rule, marked as checked by review (T022), not by a test. FR-025: name tests/test_admin_api.py::test_stats_queries_counts_udp_and_tcp † for the Stats/log part; move "no lock while calling a store or the network" into a binding design constraint citing 001 interfaces.md rule 4, as 001 did for rule 2.
+  I1: state R-3's decision in the Assumptions and the edge case.
+  I2: add QR=1 to the Assumption on stricter reply checks.
+  I3: add the trailing-# rule to FR-002.
+  U1: add the three trivially-passing blocklist tests to T021's command.
+  U2: add to T031 that stub_handler and the two placeholders stay in listener.py on purpose (R-9).
+  U3: spell out the bind fallback in T027 as you describe.
+  Skip D1. Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve C1 the way 001 did, and take the cheap low items that make implementation smoother. W1 is accepted: as in 001, clarification happened inside the specify step (Q1, recorded in § Clarifications), so /speckit-clarify was skipped. No second analyze run: the only critical finding was narrow.
+- **Expected:** spec and task edits only.
+- **Got:** all applied in spec.md and tasks.md only. FR-003 trimmed; FR-016 notes the TCP-retry ID is checked by review (T022); FR-025 names test_stats_queries_counts_udp_and_tcp (double counting would fail it); new "Design constraints (binding; no test)" section with DC-1 (no lock while calling a store or the network, citing 001 rule 4). R-3's decision, QR=1 and the trailing-# rule stated in the spec. T021 re-runs the three trivially-passing tests, T031 documents the unused 001 placeholders, T027 spells out the bind fallback. It also pointed T026's review at DC-1 unasked, to keep the references consistent.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-029
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-implement Work through specs/002-zone-forwarder/tasks.md in order. Stop after each phase checkpoint and report so I can review before continuing. Do not change dnsd/parser.py or dnsd/listener.py. Do not modify tests/, do not commit, do not write prompt-log entries.
+  ```
+- **Why this prompt:** implement 002 phase by phase with a review at each checkpoint (Principle X); keep 001 code untouched (Principle IX).
+- **Expected:** Phase 1 (T001): baseline check.
+- **Got:** tools confirmed (ruff 0.17.3, bandit 1.9.4, pytest 9.2.0); the 11 001 gate tests pass before any change (41/41 cases). Only the task checkbox changed.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-030
+- **Module:** zone, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-029
+- **Prompt:**
+  ```
+  Continue with Phase 2
+  ```
+- **Why this prompt:** next checkpoint: foundational zone store, loader and handler skeleton (T002–T006).
+- **Expected:** dnsd/zone.py, dnsd/forwarder.py skeleton, __main__.py wiring; 001 tests still green.
+- **Got:** as expected. ZoneStore with one lock, records by name and derived suffixes; make_record/value_text pure; load_zone with ";" comments, five-field check and errors as "<path>:<line>: …". make_handler answers from the zone and otherwise returns a temporary SERVFAIL marked for T031. __main__ loads the zone (stderr + exit 1 on error) and installs the real handler. ruff/bandit clean, 001 gate 41/41, parser.py and listener.py unchanged. Manual checks: 46 fixture records, value_text forms, make_record rejects MX, negative/boolean TTL, scoped IPv6 and "01.2.3.4". It resolved a ruff TRY004 finding by restructuring the code instead of suppressing it.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-031
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-030
+- **Prompt:**
+  ```
+  Continue with Phase 3
+  ```
+- **Why this prompt:** next checkpoint: local answers (US1, T007–T008).
+- **Expected:** lookup returns Answer for matching records; US1 tests and the three big.home.lan tests deferred from 001 pass.
+- **Got:** as expected; 11 tests (13 cases) pass, including the three 001-deferred truncation/EDNS tests and the full check of test_truncated_response_keeps_question_and_whole_records. ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-032
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-031
+- **Prompt:**
+  ```
+  Continue with Phase 4
+  ```
+- **Why this prompt:** next checkpoint: negative local answers (US2, T009–T010).
+- **Expected:** lookup returns NoData / NXDomain per contract.md; US2 tests pass, US1 still green.
+- **Got:** as expected; test_nodata and test_nxdomain_under_local_suffix pass, US1 set still green (25/25 cases). Unprompted edge checks: the suffix itself (home.lan.) and a name below a local name give NXDomain; lan., other.lan. and the root stay NotLocal. ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
+
+### S-033
+- **Module:** zone
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-032
+- **Prompt:**
+  ```
+  Continue with Phase 5
+  ```
+- **Why this prompt:** next checkpoint: one-step CNAME (US3, T011–T012).
+- **Expected:** CNAME case between "records of this type" and NODATA; CNAME tests pass.
+- **Got:** as expected; CNAME first, then target records of the requested type only if the target is local; one step only; a CNAME query still returns just the CNAME. Three CNAME tests pass, US1–US2 still green (29/29 cases). ruff/bandit clean, 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-034
+- **Module:** blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-033
+- **Prompt:**
+  ```
+  Continue with Phase 6
+  ```
+- **Why this prompt:** next checkpoint: blocklist store, loader and blocked responses (US4, T013–T017).
+- **Expected:** dnsd/blocklist.py, blocked branch in the handler, __main__ wiring; blocklist tests and the 001 blocklist-dependent tests pass.
+- **Got:** as expected. Blocklist store with one lock, case-insensitive de-duplication, whole-label matching by walking up to the root; load_blocklist with "#" comments, one domain per line, "<path>:<line>: …" errors. Handler builds 0.0.0.0/:: with TTL 60 and AA=0, or NXDOMAIN for other types, result "blocked". test_blocklist.py 22/22 cases (three pass trivially until forwarding exists, as T017 notes), the five 001 listener tests 7/7, US1–US3 29/29; fixture loads its four entries; a malformed line exits 1. ruff/bandit clean. Its report did not mention the sixth 001-deferred test (fuzz); verified by hand: <passed / failed>.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-035
+- **Module:** forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-034
+- **Prompt:**
+  ```
+  Continue with Phase 7
+  ```
+- **Why this prompt:** next checkpoint: upstream exchange and the cache/forward branch (US5, T018–T021).
+- **Expected:** exchange() with UDP, TCP retry and one 2 s deadline; handler forwards and replaces the temporary SERVFAIL.
+- **Got:** as expected. exchange: secrets-drawn ID and source port (each in one helper, for an easy Principle VI review), UDP socket connected to the upstream, reply counts only with QR=1, matching ID and question, TCP retry with a new ID, any OSError → None. Handler: cache get → "cached"; failure → SERVFAIL "error" without put; reply → put, then relay RCODE and sections with AA=0, "error" if the upstream said SERVFAIL (Q1). Bandit accepted the ("", port) bind, so the T027 fallback is unneeded. T021: 19 tests / 26 cases pass, including the TCP retry and the three formerly trivial blocklist tests; regression over zone/blocklist/listener/harness 99/99. 001 files unchanged.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-036 ★
+- **Module:** forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-035
+- **Prompt:**
+  ```
+  Continue with Phase 8
+  ```
+- **Why this prompt:** next checkpoint: Principle VI review and spoofing/failure checks (US6, T022–T024).
+- **Expected:** review of exchange; US6 tests pass; manual unreachable-upstream check.
+- **Got:** the T022 review confirmed ID/port come only from secrets, fresh per call, a new ID on the TCP retry, nothing configurable, one deadline. It found a real defect in its own Phase 7 code: the TCP sendall used the connect-time timeout instead of the remaining budget, so a slow connect plus a slow send could overrun 2 s; fixed with one settimeout line. T023: 8 US6 tests pass (random ID/port, wrong ID ignored, timeouts over UDP and TCP, recovery, full fuzz stream); the TCP-retry tests re-run after the fix, 10/10. T024: unreachable upstream gives SERVFAIL in 0.002 s (ICMP on the connected socket), the server keeps answering, nothing on stderr. This also confirms the 001-deferred fuzz test now passes.
+- **Verdict:** worked
+- **Failure mode:** deadline bug in its own S-035 code, caught by its own review task before commit
+- **Fixed by:** same prompt
+- **Commit:** 
+
+### S-037
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-036
+- **Prompt:**
+  ```
+  Continue with Phase 9
+  ```
+- **Why this prompt:** next checkpoint: review the stores and handler against 001's interfaces (US7, T025–T026).
+- **Expected:** reviews and manual store checks; fixes only if needed.
+- **Got:** no code change needed. ZoneStore and Blocklist have exactly their role's methods and signatures; stateful methods hold their own lock for the whole body with no I/O or cross-store calls; records()/domains() return new lists, Answer.records is a tuple. Manual checks all as expected (make_record accepts/rejects, value_text forms, TTL replacement, suffix removal, blocklist dedup and whole-label matching, remove of subdomain → False). Handler reaches stores only via state, never touches stats/log, holds no lock, sets only RCODE/AA/sections; only __main__ imports the new modules; parser.py and listener.py unchanged since 001.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-038
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-037
+- **Prompt:**
+  ```
+  Continue with Phase 10 and give the final report.
+  ```
+- **Why this prompt:** finish the polish phase (T027–T031) and get a summary for the reviewer.
+- **Expected:** lint/scan, startup-error checks, 65-test gate, full-suite failure list, final re-read.
+- **Got:** all 31 tasks done. ruff/bandit clean with no suppressions anywhere. T028: missing files and malformed lines exit 1 with one "dnsd: …" line and leave the port free; ";" and "#" trailing comments load. T029: 65 test functions / 128 cases pass, nothing skipped. T030 full suite: 143 passed, 5 failed (cache tests: no cache yet, 003), 96 setup errors (admin API not reachable, 004); none from the DNS port. T031: no temporary code left, only the contracted public names, 001 files and tests/ unchanged. Report lists every decision for the reviewer, including the S-036 deadline fix and an unreachable defensive raise.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

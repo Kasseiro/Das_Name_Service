@@ -1,17 +1,18 @@
 """Entry point: python -m dnsd (contract.md § Command line)."""
 import argparse
+import sys
 
+from dnsd.blocklist import load_blocklist
+from dnsd.forwarder import make_handler
 from dnsd.listener import (
     Config,
-    PlaceholderBlocklist,
     PlaceholderCache,
     PlaceholderQueryLog,
-    PlaceholderZoneStore,
     ServerState,
     Stats,
     serve,
-    stub_handler,
 )
+from dnsd.zone import load_zone
 
 
 def host_port(text: str) -> tuple[str, int]:
@@ -29,15 +30,21 @@ def main() -> None:
     parser.add_argument("--blocklist", required=True)
     args = parser.parse_args()
     config = Config(args.listen, args.admin, args.upstream, args.zone, args.blocklist)
+    try:
+        zone = load_zone(args.zone)
+        blocklist = load_blocklist(args.blocklist)
+    except (OSError, ValueError) as exc:
+        print(f"dnsd: {exc}", file=sys.stderr)
+        sys.exit(1)
     state = ServerState(
         config,
-        PlaceholderZoneStore(),
-        PlaceholderBlocklist(),
+        zone,
+        blocklist,
         PlaceholderCache(),
         Stats(),
         PlaceholderQueryLog(),
     )
-    serve(state, stub_handler)
+    serve(state, make_handler(state))
 
 
 if __name__ == "__main__":
