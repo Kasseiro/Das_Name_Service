@@ -25,6 +25,7 @@ constants) come from `dnsd.parser` (001 interfaces.md § 1). This feature adds o
 
 | Reply | Lifetime |
 |---|---|
+| TC=1, any RCODE (checked first) | 0 (not stored; spec DC-4) |
 | NOERROR, answers not empty | lowest answer TTL |
 | NXDOMAIN or NOERROR with no answers, ≥ 1 SOA in authority | lowest `min(SOA ttl, SOA minimum)` over those SOAs, capped by the lowest answer TTL if there are answers |
 | NXDOMAIN or NOERROR with no answers, no SOA in authority | 0 (not stored) |

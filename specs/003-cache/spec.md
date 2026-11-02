@@ -176,7 +176,7 @@ and run the whole suite.
 ### Edge Cases
 
 - **Name in different letter case**: matches the cached entry (case-insensitive matching, see
-  Assumptions). The reply carries the client's question as sent, because the listener copies the
+  Assumptions and DC-3). The reply carries the client's question as sent, because the listener copies the
   question from the query (001).
 - **Lowest answer TTL is 0**: the reply is relayed but not cached (its lifetime is zero).
 - **A record TTL in the authority or additional section lower than the time spent in the cache**:
@@ -185,6 +185,8 @@ and run the whole suite.
   only with an SOA in the authority section (contract.md § Responses › Cache applies by RCODE).
   Its lifetime is also capped by its lowest answer TTL, so no answer record is served past its own
   TTL.
+- **Truncated upstream reply (TC=1)** reaching `put` (a TCP retry reply that is itself truncated,
+  002 Edge Cases): relayed to the client but not cached (DC-4), whatever its RCODE.
 - **Several SOA records in the authority section**: the lowest min(TTL, MINIMUM) of all of them
   is the bound.
 - **An SOA record in the answer section, none in the authority section**: does not count; the
@@ -215,9 +217,9 @@ this feature. See **Verification status**.
   Nothing else in the handler, zone, blocklist or forwarder modules changes (002 SC-008).
   *Tests*: `tests/test_cache.py::test_repeat_query_is_not_sent_upstream_again`,
   `tests/test_cache.py::test_cached_answer_over_tcp`
-- **FR-002**: The store MUST follow 001 interfaces.md concurrency rules 1 and 3: one private lock,
-  taken for the whole body of `get` and `put`; `get` returns a new Message with new lists, so a
-  caller cannot change a stored entry.
+- **FR-002**: The store MUST have exactly the role's two methods, and `get` MUST return a new
+  Message with new lists, so a caller cannot change a stored entry (001 interfaces.md concurrency
+  rule 3). Locking is DC-1.
   *Tests*: `tests/test_cache.py::test_cached_answer_keeps_response_shape`,
   `tests/test_cache.py::test_repeat_query_is_not_sent_upstream_again`
 
@@ -243,12 +245,11 @@ this feature. See **Verification status**.
 
 #### What is returned (contract.md § Responses › Cache)
 
-- **FR-006**: `get(name, qtype)` MUST return the stored reply only for the same question type and a
-  name equal to the stored name under ASCII case-insensitive comparison (RFC 4343, as `Name`
-  equality already defines); no other name (subdomain, parent, sibling) and no other type matches.
+- **FR-006**: `get(name, qtype)` MUST return the stored reply only for the same name and the same
+  question type; no other name (subdomain, parent, sibling) and no other type matches. How letter
+  case is compared is DC-3.
   *Tests*: `tests/test_cache.py::test_cache_is_per_type`,
-  `tests/test_cache.py::test_cache_is_per_name`,
-  `tests/test_cache.py::test_cached_answer_carries_the_new_querys_id_and_question`
+  `tests/test_cache.py::test_cache_is_per_name`
 - **FR-007**: `get` MUST return the stored RCODE and all three record sections, in their stored
   order, as 001 interfaces.md specifies for the Cache role.
   *Tests*: `tests/test_cache.py::test_cached_answer_keeps_response_shape`,
@@ -279,13 +280,22 @@ this feature. See **Verification status**.
 
 ### Design constraints *(binding; no test)*
 
-- **DC-1**: While holding its lock, the cache does in-memory work only: no socket or file I/O, no
-  call to another store, no call back into caller code (001 interfaces.md concurrency rule 2).
-  No test can observe it; it is checked in review, like 002 DC-1.
+- **DC-1**: The cache has one private lock, taken for the whole body of `get` and `put` (001
+  interfaces.md concurrency rule 1). While holding it, the cache does in-memory work only: no
+  socket or file I/O, no call to another store, no call back into caller code (rule 2). No test can
+  observe either; both are checked in review, like 002 DC-1.
 - **DC-2**: A negative reply with an SOA record (FR-004) is stored for exactly the bound FR-004
   gives, capped by its lowest answer TTL if it has answer records. The tests verify only the upper
   bound (that it is not kept longer) because no test in `tests/` observes that a negative answer is
   reused; the stored lifetime is checked in review.
+- **DC-3**: Names match ASCII case-insensitively (RFC 4343): the cache keys on the `Name` value,
+  whose equality and hash already ignore ASCII case, and does not normalise names itself (see
+  Assumptions). No test can observe it: the fake upstream also ignores case, so a miss on a
+  mixed-case repeat would still return the right addresses. Checked in review.
+- **DC-4**: `put` does not store a reply with TC=1, so a truncated reply is never served for its
+  full TTL. The forwarder normally replaces a truncated UDP reply with the TCP one (002 FR-019),
+  but a TCP reply that itself has TC=1 is relayed as received (002 Edge Cases). No test sends one;
+  checked in review.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -356,6 +366,8 @@ only for 004. `test_stats_count_a_miss_after_expiry` is not named by 002 and is 
   case-insensitively. It is the simplest option, because `Name` equality and hashing are already
   ASCII case-insensitive (001 interfaces.md § 1), and it matches the zone and blocklist (RFC 4343).
   The reply's question keeps the client's case because the listener copies it from the query.
+  Recorded as DC-3 (checked in review), not as a tested requirement: no test can tell it apart from
+  case-sensitive matching.
 - **Size limit** (unspecified by contract.md § Responses › Cache): there is no limit and no
   background sweeping. An expired entry is removed when `get` finds it. This is the simplest option
   (Principle VIII); memory grows with the number of distinct cacheable questions asked within their
@@ -368,7 +380,7 @@ only for 004. `test_stats_count_a_miss_after_expiry` is not named by 002 and is 
   most" bound of contract.md, used as the lifetime), so a repeated missing name is not forwarded
   again within that time (DC-2).
 - The upstream reply passed to `put` is the one the handler relays (002 FR-023); the cache stores
-  its RCODE and three sections as received and ignores the rest of the header, which the handler
-  and listener set (001, 002).
+  its RCODE and three sections as received. Of the rest of the header it reads only TC (DC-4); the
+  handler and listener set everything else (001, 002).
 - This feature does not modify `tests/`. Prompt-log entries (`docs/prompt-log.md`) are written by
   the user, as for 001 and 002.

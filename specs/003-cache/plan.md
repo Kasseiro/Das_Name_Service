@@ -59,7 +59,7 @@ Constitution v1.1.1.
 | I. RFC 1035 authoritative | RFC 2308 used only for the negative-caching bound and RFC 4343 only for name matching, as contract.md § Responses › Cache and § Zone file cite them | Pass |
 | II. contract.md binding | Spec and plan cite contract.md § Responses › Cache; the two unspecified points (case, size) are decided in spec Assumptions and research R-1, R-5, not added to the contract | Pass |
 | III. Standard library only | `dataclasses`, `threading`, `time` only | Pass |
-| IV. Requirement → test | FR-001 – FR-010 keep the test lists of spec.md; acceptance = the 17 required cache tests plus the 65 of 002 (quickstart § 2, § 3). DC-1 and DC-2 are review-checked constraints, not FRs. No tests added or changed | Pass |
+| IV. Requirement → test | FR-001 – FR-010 keep the test lists of spec.md; acceptance = the 17 required cache tests plus the 65 of 002 (quickstart § 2, § 3). DC-1 – DC-4 (locking, negative lifetime, case-insensitive matching, TC=1 not stored) are review-checked constraints, not FRs, because no test can observe them. No tests added or changed | Pass |
 | V. Never crash | `get`/`put` work only on already-decoded `Message` values; `max(…, 0)` keeps aged TTLs valid for `ResourceRecord`; a missing key or empty section raises nothing (`min` is called only on non-empty sequences); the listener's FR-020 guard remains for defects | Pass |
 | VI. Secure forwarding | Not touched. Only replies the forwarder accepted (matching ID and question) reach `put` (002 FR-017, FR-023), so the cache cannot be filled by spoofed datagrams | Pass |
 | VII. Clean lint/scan | No `assert`, `random`, `try/except/pass` (research R-8); `ruff check dnsd` and `bandit -r dnsd` in quickstart § 1 | Pass |
@@ -69,8 +69,9 @@ Constitution v1.1.1.
 
 **Post-design re-check (after Phase 1)**: Pass. The design added nothing beyond the planning
 input: one file, one public class with two methods, private `_Entry`, `_lifetime` and `_aged`.
-Two points for review: the unbounded dict (research R-5: entries for questions never asked again
-after expiry stay in memory) and DC-2 (negative lifetime, not observable by tests).
+Points for review: the unbounded dict (research R-5: entries for questions never asked again
+after expiry stay in memory) and DC-1 – DC-4 (spec § Design constraints; not observable by tests).
+After `/speckit-analyze`, a reply with TC=1 is no longer cached (spec DC-4, research R-2).
 
 ## Project Structure
 

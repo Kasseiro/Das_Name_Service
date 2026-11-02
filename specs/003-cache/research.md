@@ -10,7 +10,7 @@ record the choices the planning input left open or fixed.
   handler. `_Entry` is a private frozen dataclass holding `rcode`, the three record sections as
   tuples, `stored` (a `time.monotonic()` value) and `lifetime` (whole seconds).
 - **Rationale**: `Name.__eq__`/`__hash__` are already ASCII case-insensitive (001 interfaces.md
-  § 1), so the dict gives the spec's case-insensitive matching (spec Assumptions, FR-006) with no
+  § 1), so the dict gives the spec's case-insensitive matching (spec Assumptions, DC-3) with no
   extra code. Tuples make a stored entry immutable, so `get` only has to build new lists
   (001 concurrency rule 3).
 - **Alternatives**: keying by `name.to_text().lower()` (duplicates what `Name` already does);
@@ -21,6 +21,7 @@ record the choices the planning input left open or fixed.
 
 - **Decision**: a private pure function `_lifetime(reply) -> int` computed **before** taking the
   lock:
+  - TC=1 (any RCODE): `0` (spec DC-4; checked first).
   - RCODE NOERROR with answers: `min(rr.ttl for rr in answers)`.
   - RCODE NXDOMAIN, or NOERROR with no answers: let `soas` be the authority records with
     `rtype == TYPE_SOA`; if none, `0`; otherwise `min(min(rr.ttl, rr.rdata.minimum) for rr in soas)`,
@@ -40,7 +41,8 @@ record the choices the planning input left open or fixed.
 ## R-3: Ageing and expiry (FR-008, FR-009)
 
 - **Decision**: `age = int(time.monotonic() - entry.stored)` (whole seconds, rounded down). An entry
-  is expired when `age >= entry.lifetime`; `get` then deletes it and returns `None`. Otherwise every
+  is expired when `age >= entry.lifetime`, which for a whole-number lifetime is the same as the
+  exact elapsed time reaching it; `get` then deletes it and returns `None`. Otherwise every
   record in the three sections is returned as `dataclasses.replace(rr, ttl=max(rr.ttl - age, 0))`.
 - **Rationale**: `time.monotonic` does not jump with the wall clock (spec Edge Cases). Rounding down
   gives TTL 300 right after caching and stays within one second of the exact remaining time
@@ -48,10 +50,11 @@ record the choices the planning input left open or fixed.
   integer age, so an entry with lifetime 1 is gone after 1 s; tests wait 2.3 s.
   `replace` re-runs `ResourceRecord.__post_init__`, and a TTL clamped to 0–original stays in the
   valid range.
-- **Alternatives**: expiring on the exact float age (`elapsed >= lifetime`), which can make an entry
-  expire up to 1 s before its reduced TTL reaches 0; either is within the contract, the integer form
-  keeps TTL and expiry consistent. Rounding to nearest (could show a TTL 1 s above the true value
-  sooner; no benefit).
+- **Alternatives**: expiring on the exact float age (`elapsed >= lifetime`): for a whole-number
+  lifetime `int(elapsed) >= lifetime` and `elapsed >= lifetime` are the same condition, so the two
+  behave identically; the integer form is used because the same `age` also ages the TTLs. Rounding
+  the age to nearest (would show TTLs up to half a second too low, and expire entries half a second
+  early; no benefit).
 
 ## R-4: Records not aged
 
@@ -71,7 +74,7 @@ record the choices the planning input left open or fixed.
 - **Alternatives**: LRU with a fixed cap (`OrderedDict`), a periodic sweep thread, sweeping expired
   entries on every `put` (O(n) under the lock). All rejected for this feature.
 
-## R-6: Locking (FR-002, DC-1)
+## R-6: Locking (spec DC-1; FR-002 for the new lists)
 
 - **Decision**: one private `threading.Lock` per `Cache`. `get` holds it for the lookup, expiry
   check, deletion and building the returned `Message` (pure in-memory work on tuples); `put`

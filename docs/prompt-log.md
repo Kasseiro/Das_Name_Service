@@ -846,3 +846,44 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** – (numbering slips in its own draft, self-corrected)
 - **Fixed by:** –
 - **Commit:** 
+
+### S-042
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-analyze
+  ```
+- **Why this prompt:** cross-check the 003 artifacts before implementation.
+- **Expected:** few findings; 003 is small.
+- **Got:** no critical issues, 2 high, 4 low. C1/C2 (Principle IV): FR-002's locking clause and FR-006's case-insensitivity cited tests that would pass without the behaviour; for C2 it worked out that the fake upstream itself ignores case, so the cited test cannot detect a cache miss. U1: a truncated (TC=1) upstream reply would be cached for its full TTL. Lows: wrong rationale in R-3, a [P] marker on a dependent task, an underestimated gate runtime. It verified that every -k filter selects exactly the intended tests and that the counts add up (17 + 5 = 22; 17 + 65 = 82). Read-only.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** S-043
+- **Commit:** 
+
+### S-043
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-042
+- **Prompt:**
+  ```
+  Apply these, then stop:
+  C1: narrow FR-002 to "exactly the role's two methods, returning new lists"; move the locking rule (001 concurrency rule 1) into DC-1.
+  C2: FR-006 keeps "same name and same type only" with the per-name and per-type tests; record case-insensitive matching as an Assumption plus a design constraint checked in review.
+  U1: put does not store a reply with TC=1 (a truncated reply must not be served for its full TTL). Record it as a design constraint checked in review, add the edge case, and add it to the T010 lifetime task and the T012 review.
+  I1: fix the R-3 rationale wording.
+  P1: drop [P] from T003.
+  A1: change the gate estimate to about 20–25 s.
+  Do not touch tests/ and do not write prompt-log entries.
+  ```
+- **Why this prompt:** resolve the two Principle IV findings the same way as in 001 and 002 (untestable clauses become review-checked design constraints), and close the truncated-reply gap with one condition rather than caching a partial answer. No second analyze run.
+- **Expected:** spec, plan-side and task edits only.
+- **Got:** all applied across spec, research, data model, contract, quickstart, plan, tasks and checklist. FR-002 and FR-006 narrowed; DC-1 now holds the locking rule, new DC-3 (case-insensitive keying, no normalisation) and DC-4 (TC=1 → lifetime 0, checked before any RCODE branch); T010 and T012 updated; R-3 rationale corrected; T003 no longer parallel; gate estimate 20–25 s. tests/ and dnsd/ untouched.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 

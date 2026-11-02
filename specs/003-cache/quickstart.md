@@ -29,7 +29,7 @@ pytest --impl=. tests/test_cache.py \
 ```
 
 Expected: every selected test passes (17 functions; two are parametrised and expand to more
-cases). Takes about 15 s because of the TTL waits.
+cases). Takes about 20–25 s because of the TTL waits and the upstream timeout.
 
 ## 3. No regression: the 65 tests 002 requires
 
@@ -56,5 +56,8 @@ Expected: only `dnsd/cache.py` (new) and `dnsd/__main__.py`.
 
 ## 6. Review points (no test)
 
-- DC-1: nothing under `self._lock` does I/O or calls another store.
+- DC-1: one lock, taken for the whole body of `get` and `put`; nothing under it does I/O or calls
+  another store.
 - DC-2: a negative reply with an SOA is stored for `min(SOA ttl, SOA minimum)` (research R-2).
+- DC-3: the dict is keyed by the `Name` value itself; no lower-casing or other normalisation.
+- DC-4: `_lifetime` returns 0 for a reply with TC=1, before any RCODE branch.

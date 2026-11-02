@@ -39,5 +39,8 @@
   user asked, so no clarification marker was needed.
 - Principle IV: FR-004 is phrased as the tested upper bound; that negative replies are actually
   reused is not observable by any test and is kept as DC-2 (review-checked), following 002 DC-1.
+- After `/speckit-analyze`: locking (DC-1) and case-insensitive matching (DC-3) were moved out of
+  FR-002 and FR-006, because the tests those FRs named cannot observe them; DC-4 (a reply with
+  TC=1 is not cached) was added. All four design constraints are checked in review (tasks T012).
 - FR-010 is verified only by tests deferred to 004 (†); it adds no code here and records that the
   unchanged handler provides precedence and counters once the real cache is installed.

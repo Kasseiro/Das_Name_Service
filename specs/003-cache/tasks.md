@@ -32,7 +32,7 @@ description: "Task list for feature 003: TTL-respecting cache"
   `put(self, name: Name, qtype: int, reply: Message) -> None` of
   `specs/001-parser-listener/contracts/interfaces.md` § 3, plus `__init__`. Everything else is
   `_`-prefixed (`_Entry`, `_lifetime`, `_aged`), per `specs/003-cache/contracts/cache.md`.
-- Concurrency (001 interfaces.md § 3, spec FR-002, DC-1): one private `threading.Lock`; `get` and
+- Concurrency (001 interfaces.md § 3, spec DC-1; new lists: FR-002): one private `threading.Lock`; `get` and
   `put` each take it with `with self._lock:`; under the lock only in-memory work (no I/O, no
   logging, no call to another store). `get` returns a new `Message` with new lists.
 - No `assert` (B101), no `try/except/pass` (B110), no `random`, no `logging`, no size limit, no
@@ -58,7 +58,7 @@ check of every story needs it.
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T002 Create `dnsd/cache.py` (module docstring citing contract.md § Responses › Cache and spec 003) with a private frozen dataclass `_Entry` (data-model § `_Entry`): fields `rcode: int`, `answers: tuple[ResourceRecord, ...]`, `authority: tuple[ResourceRecord, ...]`, `additional: tuple[ResourceRecord, ...]`, `stored: float`, `lifetime: int`; and class `Cache` whose `__init__` sets `self._lock = threading.Lock()` and `self._entries: dict[tuple[Name, int], _Entry] = {}`. Add `get` returning `None` and `put` returning `None` (both filled in by US1), each with the signature of contracts/cache.md
-- [ ] T003 [P] Change `dnsd/__main__.py` (contracts/cache.md § `dnsd.__main__`, research R-7): add `from dnsd.cache import Cache`, pass `Cache()` to `ServerState` in place of `PlaceholderCache()`, and remove `PlaceholderCache` from the `dnsd.listener` import list. Nothing else changes; `PlaceholderCache` stays defined in `dnsd/listener.py`
+- [ ] T003 Change `dnsd/__main__.py` (contracts/cache.md § `dnsd.__main__`, research R-7): add `from dnsd.cache import Cache`, pass `Cache()` to `ServerState` in place of `PlaceholderCache()`, and remove `PlaceholderCache` from the `dnsd.listener` import list. Nothing else changes; `PlaceholderCache` stays defined in `dnsd/listener.py`
 
 **Checkpoint**: `python -m dnsd` starts with the 002 quickstart flags; `ruff check dnsd` is clean;
 the 65 002 tests still pass (the cache never hits yet).
@@ -109,7 +109,7 @@ lifetime.
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] No code: the `(name, qtype)` dict key of T002/T005 gives FR-006 (`Name` equality and hash are ASCII case-insensitive, research R-1). Run `pytest --impl=. tests/test_cache.py -k "per_type or per_name or new_querys_id"`; all pass. If one fails, fix the key handling in `dnsd/cache.py` only (do not normalise names yourself)
+- [ ] T009 [US3] No code: the `(name, qtype)` dict key of T002/T005 gives FR-006, and DC-3 because `Name` equality and hash are ASCII case-insensitive (research R-1). Run `pytest --impl=. tests/test_cache.py -k "per_type or per_name or new_querys_id"`; all pass. If one fails, fix the key handling in `dnsd/cache.py` only (do not normalise names yourself)
 
 **Checkpoint**: US1–US3 tests pass.
 
@@ -127,7 +127,7 @@ with an SOA in the authority section, for at most min(SOA TTL, MINIMUM).
 
 ### Implementation for User Story 4
 
-- [ ] T010 [US4] Complete `_lifetime` in `dnsd/cache.py` (FR-004, FR-005, research R-2, data-model § Lifetime): keep the T004 positive branch; add — if `rcode == NXDOMAIN` or (`rcode == NOERROR` and `answers` empty): `soas = [rr for rr in reply.authority if rr.rtype == TYPE_SOA]`; if `soas` is empty return `0`; else `bound = min(min(rr.ttl, rr.rdata.minimum) for rr in soas)`; if `reply.answers` is not empty, `bound = min(bound, min(rr.ttl for rr in reply.answers))`; return `bound`. Every other RCODE (SERVFAIL, REFUSED, NOTIMP, FORMERR, …) returns `0`. Order the branches so `NOERROR` with answers takes the positive branch and `NXDOMAIN` with answers takes the negative one. An SOA in the answer section does not count. Call `min` only on non-empty sequences
+- [ ] T010 [US4] Complete `_lifetime` in `dnsd/cache.py` (FR-004, FR-005, DC-4, research R-2, data-model § Lifetime): first, if `reply.header.tc` is set return `0` ("a truncated reply must not be served for its full TTL"; any RCODE); then keep the T004 positive branch; add — if `rcode == NXDOMAIN` or (`rcode == NOERROR` and `answers` empty): `soas = [rr for rr in reply.authority if rr.rtype == TYPE_SOA]`; if `soas` is empty return `0`; else `bound = min(min(rr.ttl, rr.rdata.minimum) for rr in soas)`; if `reply.answers` is not empty, `bound = min(bound, min(rr.ttl for rr in reply.answers))`; return `bound`. Every other RCODE (SERVFAIL, REFUSED, NOTIMP, FORMERR, …) returns `0`. Order the branches so `NOERROR` with answers takes the positive branch and `NXDOMAIN` with answers takes the negative one. An SOA in the answer section does not count. Call `min` only on non-empty sequences
 - [ ] T011 [US4] Run the five US4 tests: `pytest --impl=. tests/test_cache.py -k "without_soa or with_soa or servfail_from_timeout or error_reply"`; all pass (the parametrised ones expand to 3 and 2 cases). Fix in `dnsd/cache.py` only
 
 **Checkpoint**: all 17 required cache tests pass (quickstart § 2).
@@ -143,7 +143,7 @@ merges.
 
 ### Implementation for User Story 5
 
-- [ ] T012 [US5] Scope and contract review of `dnsd/cache.py` and `dnsd/__main__.py` (FR-001, FR-002, SC-007, DC-1, DC-2): `git diff --stat main -- dnsd/` lists only `dnsd/cache.py` and `dnsd/__main__.py`; `Cache`'s public methods are exactly `get` and `put` with the contracts/cache.md signatures; only `dnsd/__main__.py` imports `dnsd.cache`; nothing under `self._lock` does I/O, logging or calls another store; `put` computes `_lifetime` and the tuples outside the lock; `get` returns new lists; a negative reply with an SOA is stored for exactly `min(SOA ttl, SOA minimum)` (capped by the lowest answer TTL if there are answers). Fix in `dnsd/cache.py` / `dnsd/__main__.py` only
+- [ ] T012 [US5] Scope and contract review of `dnsd/cache.py` and `dnsd/__main__.py` (FR-001, FR-002, SC-007, DC-1 – DC-4): `git diff --stat main -- dnsd/` lists only `dnsd/cache.py` and `dnsd/__main__.py`; `Cache`'s public methods are exactly `get` and `put` with the contracts/cache.md signatures; only `dnsd/__main__.py` imports `dnsd.cache`; (DC-1) one lock taken for the whole body of `get` and `put`, nothing under it does I/O, logging or calls another store, and `put` computes `_lifetime` and the tuples outside it; `get` returns new lists; (DC-2) a negative reply with an SOA is stored for exactly `min(SOA ttl, SOA minimum)` (capped by the lowest answer TTL if there are answers); (DC-3) the dict key is the `Name` value as passed, with no lower-casing or other normalisation; (DC-4) `_lifetime` returns 0 for a reply with `header.tc` set, before any RCODE branch. Fix in `dnsd/cache.py` / `dnsd/__main__.py` only
 
 **Checkpoint**: All five user stories implemented and checked.
 
@@ -175,26 +175,14 @@ merges.
 
 ### Within each phase
 
-- Phase 2: T002 and T003 in parallel (different files); T003's import resolves once T002 exists
+- Phase 2: T002 → T003 (T003 imports `dnsd.cache`, which T002 creates)
 - Phase 3: T004 → T005 → T006 → T007
 - Phase 6: T010 → T011
 
 ### Parallel Opportunities
 
-- T003 (`dnsd/__main__.py`) with T002 (`dnsd/cache.py`)
-- Every other task edits or checks `dnsd/cache.py` and runs sequentially
-
----
-
-## Parallel Example: Foundational
-
-```bash
-# dnsd/cache.py:
-Task: "T002 Cache skeleton with _Entry, lock and dict"
-
-# At the same time (dnsd/__main__.py):
-Task: "T003 install Cache() in place of PlaceholderCache()"
-```
+- None. T003 depends on T002, and every other task edits or checks `dnsd/cache.py`, so all tasks
+  run in order.
 
 ---
 
