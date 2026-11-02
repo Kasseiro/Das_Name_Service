@@ -829,3 +829,20 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-041
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-tasks
+  ```
+- **Why this prompt:** break the 003 plan into ordered tasks.
+- **Expected:** tasks touching only cache.py and __main__.py; no test tasks.
+- **Got:** 16 tasks in 8 phases (setup, foundational, US1–US5, polish); each story phase names the test_cache.py tests that prove it, with a -k filter. US3 needs no code (the (Name, qtype) key already gives it). Noted that US1 alone is not shippable, because entries never expire until US2. Its first draft had out-of-sequence task IDs and stale cross-references; it found and fixed them itself in a second pass.
+- **Verdict:** worked
+- **Failure mode:** – (numbering slips in its own draft, self-corrected)
+- **Fixed by:** –
+- **Commit:** 
