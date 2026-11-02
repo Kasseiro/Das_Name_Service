@@ -2,16 +2,17 @@
 import argparse
 import sys
 
+from dnsd.api import start_admin
 from dnsd.blocklist import load_blocklist
 from dnsd.cache import Cache
 from dnsd.forwarder import make_handler
 from dnsd.listener import (
     Config,
-    PlaceholderQueryLog,
     ServerState,
     Stats,
     serve,
 )
+from dnsd.querylog import QueryLog
 from dnsd.zone import load_zone
 
 
@@ -42,8 +43,13 @@ def main() -> None:
         blocklist,
         Cache(),
         Stats(),
-        PlaceholderQueryLog(),
+        QueryLog(),
     )
+    try:
+        start_admin(state)  # 004 FR-002: before serve()
+    except OSError as exc:
+        print(f"dnsd: admin {args.admin[0]}:{args.admin[1]}: {exc}", file=sys.stderr)  # DC-4
+        sys.exit(1)
     serve(state, make_handler(state))
 
 
