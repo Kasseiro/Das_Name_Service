@@ -745,4 +745,38 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Verdict:** worked
 - **Failure mode:** deadline bug in its own S-035 code, caught by its own review task before commit
 - **Fixed by:** same prompt
-- **Commit:** <hash>
+- **Commit:** 
+
+### S-037
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-036
+- **Prompt:**
+  ```
+  Continue with Phase 9
+  ```
+- **Why this prompt:** next checkpoint: review the stores and handler against 001's interfaces (US7, T025–T026).
+- **Expected:** reviews and manual store checks; fixes only if needed.
+- **Got:** no code change needed. ZoneStore and Blocklist have exactly their role's methods and signatures; stateful methods hold their own lock for the whole body with no I/O or cross-store calls; records()/domains() return new lists, Answer.records is a tuple. Manual checks all as expected (make_record accepts/rejects, value_text forms, TTL replacement, suffix removal, blocklist dedup and whole-label matching, remove of subdomain → False). Handler reaches stores only via state, never touches stats/log, holds no lock, sets only RCODE/AA/sections; only __main__ imports the new modules; parser.py and listener.py unchanged since 001.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
+
+### S-038
+- **Module:** zone, blocklist, forwarder
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** S-037
+- **Prompt:**
+  ```
+  Continue with Phase 10 and give the final report.
+  ```
+- **Why this prompt:** finish the polish phase (T027–T031) and get a summary for the reviewer.
+- **Expected:** lint/scan, startup-error checks, 65-test gate, full-suite failure list, final re-read.
+- **Got:** all 31 tasks done. ruff/bandit clean with no suppressions anywhere. T028: missing files and malformed lines exit 1 with one "dnsd: …" line and leave the port free; ";" and "#" trailing comments load. T029: 65 test functions / 128 cases pass, nothing skipped. T030 full suite: 143 passed, 5 failed (cache tests: no cache yet, 003), 96 setup errors (admin API not reachable, 004); none from the DNS port. T031: no temporary code left, only the contracted public names, 001 files and tests/ unchanged. Report lists every decision for the reviewer, including the S-036 deadline fix and an unreachable defensive raise.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:** 
