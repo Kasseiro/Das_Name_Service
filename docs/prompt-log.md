@@ -780,3 +780,32 @@ like S-007 → S-009 → S-012 is a ready-made prompt-evolution example for sect
 - **Failure mode:** –
 - **Fixed by:** –
 - **Commit:** 
+
+### S-039
+- **Module:** cache
+- **Who / tool / model:** Johnny / Claude Code v2.1.316 / Claude Opus 5.5 (effort high)
+- **Date:** 2026-11-02
+- **Refines:** –
+- **Prompt:**
+  ```
+  /speckit-specify Feature: the TTL-respecting cache for dnsd. Builds on 001 and 002: a Cache store filling the cache role of specs/001-parser-listener/contracts/interfaces.md exactly (get, put), installed in ServerState by __main__.py in place of PlaceholderCache. The handler from 002 already calls get and put in the order of contract.md § Responses and must not change (002 SC-008). Import shared types from dnsd.parser and dnsd.listener; do not redefine them (Principle IX).
+
+  Scope, per contract.md § Responses › Cache:
+  - Positive caching: a NOERROR reply with at least one answer record is cached for the lowest TTL in its answer section; until it expires, the same question is answered from the cache.
+  - TTLs in a cached answer are reduced by the time spent in the cache, to within one second.
+  - Negative caching: NXDOMAIN or empty NOERROR is cached only with an SOA in the authority section, for at most min(SOA TTL, SOA MINIMUM) (RFC 2308); otherwise not cached.
+  - SERVFAIL and every other RCODE are never cached.
+  - Case-insensitive matching and a size limit are unspecified by the contract; decide the simplest option and record it.
+  - Thread safety per 001 interfaces.md concurrency rules (one lock, no I/O inside it).
+
+  Out of scope: the query log and admin API (004), any change to the handler, zone, blocklist or forwarder.
+
+  Verified by: tests/test_cache.py, plus the two cache tests 002 deferred to 003. Tests in test_cache.py that use the admin API (blocking/records takes effect, stats and log counters) are deferred to 004.
+  ```
+- **Why this prompt:** the 002 handler already calls get/put, so 003 is only a Cache store filling 001's cache role plus one line in __main__.py; the contract's cache rules are cited, unspecified points left to the AI to decide simply.
+- **Expected:** spec.md with FRs mapped to test_cache.py; admin-API tests deferred to 004.
+- **Got:** spec with FR-001–FR-010 and no open questions; checklist passes. It read the 002 handler and confirmed it needs no change; noted the handler passes every counting upstream reply to put (including SERVFAIL), so the store must reject what it shouldn't keep. Decisions: case-insensitive matching (free, since names already compare that way); no size limit, expired entries removed on lookup (flagged unbounded growth as a risk); TTL ageing in whole seconds on a monotonic clock. "Store negative answers for exactly min(SOA TTL, MINIMUM)" made a design constraint (DC-2), since tests only check the upper bound, following 002's DC-1 precedent. Acceptance: 82 tests (17 of 22 in test_cache.py incl. the two 002 deferred, plus 002's 65); 5 deferred to 004, one of them (test_stats_count_a_miss_after_expiry) newly identified.
+- **Verdict:** worked
+- **Failure mode:** –
+- **Fixed by:** –
+- **Commit:**
